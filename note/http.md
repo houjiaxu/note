@@ -44,11 +44,14 @@ DNS（Domain Name System）服务是位于应用层的协议。它提供域名�
 URL是URI的子集
 
 #简单的http协议
-##持久链接
+##持久连接
+初始http版本中,每进行一次 HTTP 通信就要断开一次 TCP 连接。
 
+![Alt](../note/image/301650355942_.pic.jpg)
 
+持久连接
 
-
+![Alt](../note/image/311650356295_.pic.jpg)
 
 #http报文内的http信息
 #返回结果的http状态码
