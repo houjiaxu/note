@@ -119,10 +119,40 @@ Via: 使用首部字段 Via 是为了追踪客户端与服务器之间的请求�
 
 User-Agent: 首部字段 User-Agent 会将创建请求的浏览器和用户代理名称等信息传 达给服务器。 由网络爬虫发起请求时，有可能会在字段内添加爬虫作者的电子邮件 地址。此外，如果请求经过代理，那么中间也很可能被添加上代理服 务器的名称。
 
+突然想起来风控: 可以首部传个参数, 然后参数里也传一个, 对比2个参数是否相等
 
+##为Cookie服务的首部字段
+![Alt](../note/image/381650535062_.pic.jpg)
 
+HttpOnly 属性: Cookie 的 HttpOnly 属性是 Cookie 的扩展功能，它使 JavaScript 脚本 无法获得 Cookie。其主要目的为防止跨站脚本攻击（Cross-site scripting，XSS）对 Cookie 的信息窃取。
+    
+    Set-Cookie: name=value; HttpOnly
+
+##其他首部字段
+
+X-Frame-Options: 首部字段 X-Frame-Options 属于 HTTP 响应首部，用于控制网站内容 在其他 Web 网站的 Frame 标签内的显示问题。其主要目的是为了防 止点击劫持（clickjacking）攻击。
+
+X-XSS-Protection: 首部字段 X-XSS-Protection 属于 HTTP 响应首部，它是针对跨站脚本 攻击（XSS）的一种对策，用于控制浏览器 XSS 防护机制的开关。
+
+DNT: 首部字段 DNT 属于 HTTP 请求首部，其中 DNT 是 Do Not Track 的简 称，意为拒绝个人信息被收集，是表示拒绝被精准广告追踪的一种方 法。
+
+P3P: 首部字段 P3P 属于 HTTP 相应首部，通过利用 P3P（The Platform for Privacy Preferences，在线隐私偏好平台）技术，可以让 Web 网站上 的个人隐私变成一种仅供程序可理解的形式，以达到保护用户隐私的 目的。
 
 #https
+HTTPS = HTTP+ 加密 + 认证 + 完整性保护 
+
+窃听相同段上的通信并非难事。只需要收集在互联网上流动的数 据包（帧）就行了。对于收集来的数据包的解析工作，可交给那 些抓包（Packet Capture）或嗅探器（Sniffer）工具。广泛使用的抓包工具比如 Wireshark。
+
+窃听: 利用加密进行防止
+
+验证通信方的身份(token/账号密码)
+
+使用签名保证报文不被篡改
+
+HTTPS 并非是应用层的一种新协议。只是 HTTP 通信接口部分用 SSL（Secure Socket Layer）和 TLS（Transport Layer Security）协议代 替而已。
+![Alt](../note/image/151650252813_.pic.jpg)
+
+
 #确认访问用户身份的认证
 #给予http的功能追加协议
 #构建web内容的技术
