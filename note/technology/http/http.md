@@ -5,7 +5,7 @@ http超文本传输协议
 
 TCP/IP协议族是互联网相关联的协议集合的总称
 ##协议分层
-![Alt](../note/image/http/261650351705_.pic.jpg)
+![Alt](img/261650351705_.pic.jpg)
 
 应用层: 应用层决定了向用户提供应用服务时通信的活动。
 
@@ -15,7 +15,7 @@ TCP/IP协议族是互联网相关联的协议集合的总称
 
 链路层: 用来处理连接网络的硬件部分。包括控制操作系统、硬件的设备驱 动、NIC（Network Interface Card，网络适配器，即网卡），及光纤等 物理可见部分（还包括连接器等一切传输媒介）。硬件上的范畴均在 链路层的作用范围之内。
 
-![Alt](../note/image/http/271650351993_.pic.jpg)
+![Alt](img//271650351993_.pic.jpg)
 
 首先作为发送端的客户端在应用层（HTTP 协议）发出一个想看某个 Web 页面的 HTTP 请求。 
 
@@ -35,10 +35,10 @@ TCP 位于传输层，提供可靠的字节流服务。字节流服务（Byte St
 DNS（Domain Name System）服务是位于应用层的协议。它提供域名到 IP 地址之间的解析服务。
 
 ##三次握手
-![Alt](../note/image/http/281650354730_.pic.jpg)
+![Alt](img/281650354730_.pic.jpg)
 
 ##各协议作用
-![Alt](../note/image/http/291650354906_.pic.jpg)
+![Alt](img/291650354906_.pic.jpg)
 
 ##URL与URI
 URL是URI的子集
@@ -47,20 +47,20 @@ URL是URI的子集
 ##持久连接
 初始http版本中,每进行一次 HTTP 通信就要断开一次 TCP 连接。
 
-![Alt](../note/image/http/301650355942_.pic.jpg)
+![Alt](img/301650355942_.pic.jpg)
 
 持久连接: 接旨在建立 1 次 TCP 连接后进行多次请求和响应的交互
 
-![Alt](../note/image/http/311650356295_.pic.jpg)
+![Alt](img/311650356295_.pic.jpg)
 
 管线化: 不用等待响应亦可直接发送下一个请求。
 
-![Alt](../note/image/http/321650438403_.pic.jpg)
+![Alt](img/321650438403_.pic.jpg)
 
 ##cookie & session
-![Alt](../note/image/http/341650438917_.pic.jpg)
+![Alt](img/341650438917_.pic.jpg)
 
-![Alt](../note/image/http/351650438930_.pic.jpg)
+![Alt](img/351650438930_.pic.jpg)
 
 #http报文内的http信息
 ##编码提升传输速率
@@ -82,7 +82,7 @@ identity（不进行编码）
 
 #返回结果的http状态码
 
-![Alt](../note/image/http/361650440764_.pic.jpg)
+![Alt](img/361650440764_.pic.jpg)
 
 状态码和状况的不一致情况: 不少返回的状态码响应都是错误的，但是用户可能察觉不到这点。 比如 Web 应用程序内部发生错误，状态码依然返回 200 OK，这种 情况也经常遇到。
 
@@ -122,7 +122,7 @@ User-Agent: 首部字段 User-Agent 会将创建请求的浏览器和用户代�
 突然想起来风控: 可以首部传个参数, 然后参数里也传一个, 对比2个参数是否相等
 
 ##为Cookie服务的首部字段
-![Alt](../note/image/http/381650535062_.pic.jpg)
+![Alt](img/381650535062_.pic.jpg)
 
 HttpOnly 属性: Cookie 的 HttpOnly 属性是 Cookie 的扩展功能，它使 JavaScript 脚本 无法获得 Cookie。其主要目的为防止跨站脚本攻击（Cross-site scripting，XSS）对 Cookie 的信息窃取。
     
@@ -150,7 +150,7 @@ HTTPS = HTTP+ 加密 + 认证 + 完整性保护
 使用签名保证报文不被篡改
 
 HTTPS 并非是应用层的一种新协议。只是 HTTP 通信接口部分用 SSL（Secure Socket Layer）和 TLS（Transport Layer Security）协议代 替而已。
-![Alt](../note/image/http/151650252813_.pic.jpg)
+![Alt](img/151650252813_.pic.jpg)
 
 SSL速度慢
 
@@ -168,7 +168,7 @@ http超文本传输协议
 
 TCP/IP协议族是互联网相关联的协议集合的总称
 ##协议分层
-![Alt](../note/image/http/261650351705_.pic.jpg)
+![Alt](img/261650351705_.pic.jpg)
 
 应用层: 应用层决定了向用户提供应用服务时通信的活动。
 
@@ -178,7 +178,7 @@ TCP/IP协议族是互联网相关联的协议集合的总称
 
 链路层: 用来处理连接网络的硬件部分。包括控制操作系统、硬件的设备驱 动、NIC（Network Interface Card，网络适配器，即网卡），及光纤等 物理可见部分（还包括连接器等一切传输媒介）。硬件上的范畴均在 链路层的作用范围之内。
 
-![Alt](../note/image/http/271650351993_.pic.jpg)
+![Alt](img/271650351993_.pic.jpg)
 
 首先作为发送端的客户端在应用层（HTTP 协议）发出一个想看某个 Web 页面的 HTTP 请求。 
 
@@ -198,10 +198,10 @@ TCP 位于传输层，提供可靠的字节流服务。字节流服务（Byte St
 DNS（Domain Name System）服务是位于应用层的协议。它提供域名到 IP 地址之间的解析服务。
 
 ##三次握手
-![Alt](../note/image/http/281650354730_.pic.jpg)
+![Alt](img/281650354730_.pic.jpg)
 
 ##各协议作用
-![Alt](../note/image/http/291650354906_.pic.jpg)
+![Alt](img/291650354906_.pic.jpg)
 
 ##URL与URI
 URL是URI的子集
@@ -210,20 +210,20 @@ URL是URI的子集
 ##持久连接
 初始http版本中,每进行一次 HTTP 通信就要断开一次 TCP 连接。
 
-![Alt](../note/image/http/301650355942_.pic.jpg)
+![Alt](img/301650355942_.pic.jpg)
 
 持久连接: 接旨在建立 1 次 TCP 连接后进行多次请求和响应的交互
 
-![Alt](../note/image/http/311650356295_.pic.jpg)
+![Alt](img/311650356295_.pic.jpg)
 
 管线化: 不用等待响应亦可直接发送下一个请求。
 
-![Alt](../note/image/http/321650438403_.pic.jpg)
+![Alt](img/321650438403_.pic.jpg)
 
 ##cookie & session
-![Alt](../note/image/http/341650438917_.pic.jpg)
+![Alt](img/341650438917_.pic.jpg)
 
-![Alt](../note/image/http/351650438930_.pic.jpg)
+![Alt](img/351650438930_.pic.jpg)
 
 #http报文内的http信息
 ##编码提升传输速率
@@ -245,7 +245,7 @@ identity（不进行编码）
 
 #返回结果的http状态码
 
-![Alt](../note/image/http/361650440764_.pic.jpg)
+![Alt](img/361650440764_.pic.jpg)
 
 状态码和状况的不一致情况: 不少返回的状态码响应都是错误的，但是用户可能察觉不到这点。 比如 Web 应用程序内部发生错误，状态码依然返回 200 OK，这种 情况也经常遇到。
 
@@ -285,7 +285,7 @@ User-Agent: 首部字段 User-Agent 会将创建请求的浏览器和用户代�
 突然想起来风控: 可以首部传个参数, 然后参数里也传一个, 对比2个参数是否相等
 
 ##为Cookie服务的首部字段
-![Alt](../note/image/http/381650535062_.pic.jpg)
+![Alt](img/381650535062_.pic.jpg)
 
 HttpOnly 属性: Cookie 的 HttpOnly 属性是 Cookie 的扩展功能，它使 JavaScript 脚本 无法获得 Cookie。其主要目的为防止跨站脚本攻击（Cross-site scripting，XSS）对 Cookie 的信息窃取。
     
@@ -313,7 +313,7 @@ HTTPS = HTTP+ 加密 + 认证 + 完整性保护
 使用签名保证报文不被篡改
 
 HTTPS 并非是应用层的一种新协议。只是 HTTP 通信接口部分用 SSL（Secure Socket Layer）和 TLS（Transport Layer Security）协议代 替而已。
-![Alt](../note/image/http/151650252813_.pic.jpg)
+![Alt](img/151650252813_.pic.jpg)
 
 SSL速度慢
 
@@ -340,7 +340,7 @@ HTTP 标准就会成为瓶颈:
 WebSocket: 即 Web 浏览器与 Web 服务器之间**全双工**通信标准。
 
 WebSocket 协议的主要特点: 推送功能 / 减少通信量
-![Alt](../note/image/http/391650593019_.pic.jpg)
+![Alt](img/391650593019_.pic.jpg)
 
 http 2.0优化内容: 具体可参考[链接](https://zhuanlan.zhihu.com/p/89471776)
 
