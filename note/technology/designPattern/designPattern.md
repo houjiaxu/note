@@ -47,7 +47,7 @@ J2EE 模式-->对象合起来要干嘛（表现层,文中表示层个人感觉�
 
 [DECORATOR 装饰器](https://www.runoob.com/design-pattern/decorator-pattern.html)
 
-    备注: 装饰器本质上还是一个对象,是某个对象的实现,例如人(对象), 穿裤子的人(穿裤子的装饰器),穿T恤的人(穿T恤的装饰器),可以理解为既是人,又不是普通人/裸人.
+    说明: 装饰器本质上还是一个对象,是某个对象的实现,例如人(对象), 穿裤子的人(穿裤子的装饰器),穿T恤的人(穿T恤的装饰器),可以理解为既是人,又不是普通人/裸人.
          装饰器的功能又是对某个对象进行装饰,所以就造成了装饰器既是人,又对人进行装饰的现象,即所谓的给对象增加功能(装饰器持有该对象, 只有持有对象,才能增加功能)。
          但为什么不使用子类直接子类增加方法不就行了? 因为装饰器模式相比生成子类更为灵活,而且一旦功能多起来,那么子类就会显得很臃肿。
          所以装饰器的使用时机为可能扩展的功能很多很多很多,会导致子类显得非常臃肿的时候,当子类不臃肿的时候我们没必要使用该模式.
@@ -71,6 +71,10 @@ J2EE 模式-->对象合起来要干嘛（表现层,文中表示层个人感觉�
 
 [PROXY 代理模式](https://www.runoob.com/design-pattern/proxy-pattern.html)
     
+    说明:为其他对象提供一种代理来控制对某个对象的访问。
+        角色:接口,类,代理类. 接口可有可无
+        只有一个接口也可创建代理类,不过前提是要知道这个代理类的功能,
+        比如mapper,创建一个代理类之后,在代理类里写什么样的代码,就是mybatis框架里写的东西了
     垂帘听政：犹如清朝康熙年间的四大府臣，很多权利不在皇帝手里，必须通过辅佐大臣去办；
 
 ##3.行为模式
@@ -123,7 +127,23 @@ J2EE 模式-->对象合起来要干嘛（表现层,文中表示层个人感觉�
 
 [抽象工厂](https://www.runoob.com/design-pattern/abstract-factory-pattern.html) 
 
-委派模式
+[委派模式]()
+
+[MVC模式](https://www.runoob.com/design-pattern/mvc-pattern.html)
+
+[业务代表模式](https://www.runoob.com/design-pattern/business-delegate-pattern.html)
+
+[组合实体模式](https://www.runoob.com/design-pattern/composite-entity-pattern.html)
+
+[数据访问对象模式](https://www.runoob.com/design-pattern/data-access-object-pattern.html)
+
+[前端控制器模式](https://www.runoob.com/design-pattern/front-controller-pattern.html)
+
+[拦截过滤器模式](https://www.runoob.com/design-pattern/intercepting-filter-pattern.html)
+
+[服务定位器模式](https://www.runoob.com/design-pattern/service-locator-pattern.html)
+
+[传输对象模式](https://www.runoob.com/design-pattern/transfer-object-pattern.html)
 
 
 #设计模式的区别
@@ -133,6 +153,9 @@ J2EE 模式-->对象合起来要干嘛（表现层,文中表示层个人感觉�
 
 建造者 -> 装饰者: 建造者是创建型模式,构建的过程必须是稳定的(例如:盖房子先打地基,再垒砖头), 装饰者是结构型模式,是对某个被"建造"出来的对象进行装饰,装饰的顺序不必稳定(例如对人进行装饰,可以先穿衣服再化妆,也可以先化妆再穿衣服)
 
+代理模式 -> 适配器模式：适配器模式主要改变所考虑对象的接口，而代理模式不能改变所代理类的接口。 
+
+代理模式 -> 装饰器模式：装饰器模式为了增强功能，而代理模式是为了加以控制。
 
 
 
