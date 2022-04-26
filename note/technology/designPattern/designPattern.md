@@ -1,6 +1,8 @@
 #设计模式简介
 [设计模式简介-文档下方的评论也是精髓](https://www.runoob.com/design-pattern/design-pattern-intro.html)
 
+[一句话总结设计模式](http://c.biancheng.net/view/8462.html)
+
 **七大原则记忆口诀：开口里合最单依**
 
     开：开闭原则：实现热插拔，提高扩展性。
