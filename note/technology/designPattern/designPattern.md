@@ -107,7 +107,10 @@ J2EE 模式-->对象合起来要干嘛（表现层,文中表示层个人感觉�
 
 [OBSERVER 观察者](https://www.runoob.com/design-pattern/observer-pattern.html)
 
-    看守者：一旦被看守者有什么异常情况，定会及时做出反应；
+    说明:角色:抽象/具体通知者  抽象/具体被通知者
+    通知者: 1.有存储被通知者的地方  2.有添加/删除被通知者的接口  3.有通知方法(循环调用被通知者的针对事件做出反应的方法)
+    被通知者: 1.做出反应的方法(参数)或者这个类里(成员变量)有传递事件的地方 2.有做出反应的方法供通知者调用
+    使用时机: 当一个对象的改变需要联动改变其他对象的时候. 其实就是js的事件,当用户有某个操作时,页面或逻辑要有什么样的变动
 
 [STATE 状态模式](https://www.runoob.com/design-pattern/state-pattern.html)
 
@@ -126,11 +129,19 @@ J2EE 模式-->对象合起来要干嘛（表现层,文中表示层个人感觉�
     依法治罪：因张三杀人要被处死，李四偷窃要被罚款。由此势必制定处罚制度，故制定法律写明杀人、放火、偷窃等罪要受什么处罚，经通过后须变动要小。今后有人犯罪不管是谁，按共条例处罚即是，这就是访问者模式诞生的全过程。
 
 #其他模式
-[空对象模式](https://www.runoob.com/design-pattern/null-object-pattern.html)
+[空对象模式](https://www.runoob.com/design-pattern/null-object-pattern.html): 
+[空对象模式使用时机链接](https://zhuanlan.zhihu.com/p/437753647)
 
 [抽象工厂](https://www.runoob.com/design-pattern/abstract-factory-pattern.html) 
 
-[委派模式]()
+抽象工厂的优化: 前面的工厂使用简单工厂模式来进行优化,相当于2个简单工厂的结合,但是感觉用处不大.
+![抽象工厂的优化](img/421650944498_.pic.jpg)
+    
+[委派模式](https://blog.csdn.net/xiaowanzi_zj/article/details/118281544)
+
+    说明: 委派模式 = 代理模式 + 策略模式 
+    代理模式: 为其他对象提供一种代理来控制对某个对象的访问, 用到委派模式中的话就是控制对多个对象的访问了
+    spring中以Delegate或Dispatcher结尾的类基本上都是用了委派模式,Spring MVC框架中的DispatcherServlet其实就是用到的委派模式,HandlerMapping其实就是这里的项目经理维护的各个员工的信息。
 
 [MVC模式](https://www.runoob.com/design-pattern/mvc-pattern.html)
 
