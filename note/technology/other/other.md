@@ -16,7 +16,15 @@ StringRedisTemplate <String, String>
 RedisTemplate<Object, Object>
 RedisAtomicClient(redisTemplate),其实还是redisTemplate, 内部是锁
 
-EasyExcel 阿里的excel导出功能
+通用excel导出功能:正常情况下开发人员是不需要这个功能的,开发人员申请个数据库权限,查个sql就能导出数据,这种功能是针对客户的.
+
+    1.工具:EasyExcel 阿里的excel导出功能
+    2.根据sqlId进行导出,或者直接传进去一个sql进行导出
+    3.注意点: 
+         3.1 所执行的sql必须只能包含select, 不能包含delete update insert等语句
+         3.2 必须做权限的校验,只有哪些账号才能做导出
+         3.3 每次导出必须有记录,谁,sql/sqlid,时间
+         3.4 导出时要做签名.
 
 redis:
     ZSet    add(key,  value, score)  score 是分值, 可以查分值
