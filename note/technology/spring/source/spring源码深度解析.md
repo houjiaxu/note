@@ -77,9 +77,30 @@ InputStreamResource：访问输入流资源的实现类。
 ByteArrayResource：访问字节数组资源的实现类。
 
 
+##5.1FactoryBean的使用
+一般情况下， Spring 通过反射机制利用 bean的class 属性指定实现类来实例化 bean在某些情况下，实例化 bean 过程比较复杂，如果按照传统的方式， 需要在<bean>中提供大量的配置信息，配置方式的灵活性是受限的，这时采用编码的方式可能会得到一个简单的方案Spring 为此提供了一个 org.Springframework.bean.factory.FactoryBean 工厂类接口，用户可以通过实现该接口定制实例化 bean 的逻辑
 
+Factory Bean 接口对于 Spring 框架来说占有重要的地位， Spring 自身就提供了 70 多个Factory Bean 的实现 它们隐藏了实例化一些复杂 bean 的细节，给上层应用带来了便利
 
+当配置文件中＜bean＞的 class 属性配置的实现类是 Factory Bean 时，通过 getBean（）方法返的不是 Factory Bean 本身，而是 FactoryBean#getObject（）方法所返回的对象，相当于FactoryBean#getObject（）代理了getBean()方法,如果想要获取FactoryBean本身,则可以在getBean(beanname)的beanname前面加上&即可
 
+使用示例
+![Alt](img/501651718822_.pic.jpg)
+![Alt](img/511651718846_.pic.jpg)
+![Alt](img/521651718859_.pic.jpg)
+使用时就可以通过上下文调用getBean("car")了
+
+##5.2三级缓存
+
+singletonObjects(一级)：用于保存 BeanName 和创建 bean 实例之间的关系，beanname -> beaninstance
+
+earlySingletonObjects(二级) ：也是保存 BeanName 和创建 bean 实例之间的关系，此处是提前曝光的单例对象的cache，存放原始的 bean 对象（尚未填充属性），用于解决循环依赖
+
+singletonFactories(三级) ：用于保存 BeanName 和创建 bean 的工厂之间的关系，beanname -> ObjectFactory
+
+registeredSingletons ：用来保存当前所有已注册的 bean的beanname
+
+以上这些是保存在DefaultSingletonBeanRegistry这个类中的.
 
 
 
