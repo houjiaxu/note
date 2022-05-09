@@ -109,7 +109,7 @@ aop的解析器:AopNamespaceHandler中的init方法,能看到对aspectj-autoprox
 
 所有解析器，都是对 BeanDefinitionParser 接口的统一实现，入口都是从 parse 函数开始的
 
-
+aop切面的解析是在第一次调用BeanPostProcessor的时候进行的.
 
 
 
