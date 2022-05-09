@@ -254,7 +254,7 @@ new AnnotationConfigApplicationContext(Config.class)
             寻找bean中所有被@Autowired注释的属性，并将属性封装成InjectedElement类型,合并到BeanDefinition里
         ApplicationListenerDetector.postProcessMergedBeanDefinition
             保存到ApplicationListenerDetector类里的map里, 在bean的初始化操作的后置处理里面, 判断是ApplicationListener的话,会将其注册到全局监听器里
-    第4次调用:这一步应该怎么做断点? 好像一直没有调用到呀  : addSingletonFactory获取早期bean的地址, 并放入缓存, 全都调到了InstantiationAwareBeanPostProcessorAdapter的方法,然后直接返回了,打断点也没走
+    第4次调用:这一步应该怎么做断点? 循环依赖的时候会调用到,动态代理aop  : addSingletonFactory获取早期bean的地址, 并放入缓存, 全都调到了InstantiationAwareBeanPostProcessorAdapter的方法,然后直接返回了,打断点也没走
         ConfigurationClassPostProcessor的内部类ImportAwareBeanPostProcessor.getEarlyBeanReference
         AutowiredAnnotationBeanPostProcessor.getEarlyBeanReference
         RequiredAnnotationBeanPostProcessor.getEarlyBeanReference

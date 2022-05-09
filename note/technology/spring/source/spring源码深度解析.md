@@ -111,8 +111,12 @@ aop的解析器:AopNamespaceHandler中的init方法,能看到对aspectj-autoprox
 
 aop切面的解析是在第一次调用BeanPostProcessor的时候进行的.
 
+spring动态代理调用的地方有2种情况:
 
+    正常的bean在初始化之后调用
+    当出现循环依赖的情况下,在实例化之后也会调用
 
+三级缓存再看一下源码
 
 
 ##零散知识点
