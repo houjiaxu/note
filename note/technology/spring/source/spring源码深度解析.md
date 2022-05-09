@@ -102,9 +102,12 @@ registeredSingletons ：用来保存当前所有已注册的 bean的beanname
 
 以上这些是保存在DefaultSingletonBeanRegistry这个类中的.
 
+#7.AOP
+spring中的自定义注解,如果声明了自定义的注解，那么就一定会在程序中的某个地方注册了对应的解析器.
 
+aop的解析器:AopNamespaceHandler中的init方法,能看到对aspectj-autoproxy注册的解析器AspectJAutoProxyBeanDefinitionParser.
 
-
+所有解析器，都是对 BeanDefinitionParser 接口的统一实现，入口都是从 parse 函数开始的
 
 
 

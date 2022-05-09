@@ -9,7 +9,7 @@ https://spring.io/projects
 https://www.yuque.com/books/share/5f19528d-d89b-4b69-a7bd-9f436a2dd734/bs9d13
 
 #spring源码
-过程
+##bean的创建过程
 new AnnotationConfigApplicationContext(Config.class)
 
 1.AnnotationConfigApplicationContext(Class<?>... annotatedClasses)
@@ -134,7 +134,7 @@ new AnnotationConfigApplicationContext(Config.class)
             LiveBeansView.registerApplicationContext(this);//注册当前spring容器到LiveBeansView,提供servlet(LiveBeansViewServlet)在线查看所有的bean json 、 为了支持Spring Tool Suite的智能提示
         
 ------------------------------------------------------------------------------------------------------
-AbstractBeanFactory#doGetBean
+###AbstractBeanFactory#doGetBean
     getSingleton(beanName);//尝试去缓存中获取对象
         //获取到后调用getObjectForBeanInstance//再获取真正的对象,如果获取到的是普通的单例bean,则会直接返回。如果是FactoryBean类型的，则需调用 getObject 工厂方法获取真正的bean实例,如果用户想获取FactoryBean本身，也是直接返回
         //没获取到则判断是否有父工厂, 有则调用父工厂的doGetBean或getBean方法,一般只有spring和springmvc的时候才有父子工厂
@@ -142,7 +142,7 @@ AbstractBeanFactory#doGetBean
                 createBean();//创建bean,详细看下方
     getTypeConverter().convertIfNecessary//检查所需类型是否与实际 bean 实例的类型匹配, 不匹配则进行转换
 ------------------------------------------------------------------------------------------------------
-createBean();//创建bean
+###createBean();//创建bean
     根据beanName解析出Class,设置到RootBeanDefinition中
     验证和准备覆盖方法(仅在XML方式中lookup-method 和 replace-method
     resolveBeforeInstantiation() 解析aop信息并缓存起来,事务并不会在此处被解析
@@ -224,13 +224,15 @@ createBean();//创建bean
         registerDisposableBeanIfNecessary//注册销毁的bean的销毁接口
             以beanName当做key,注册一个销毁bean放入map(disposableBeans)中,以便销毁时回调
         
- 销毁bean可以参考AbstractApplicationContext.refresh().destroyBeans();
+ ##销毁bean
+        可以参考AbstractApplicationContext.refresh().destroyBeans();
         销毁bean的时候AbstractAutowireCapableBeanFactory#destroyBean(Object existingBean)
             new DisposableBeanAdapter(existingBean, getBeanPostProcessors(), getAccessControlContext()).destroy();
                 filterPostProcessors(postProcessors, bean);
                     DestructionAwareBeanPostProcessor.requiresDestruction  (第9次调用)
 ------------------------------------------------------------------------------------------------------
-Aware的主要会被spring处理的实现类都在ApplicationContextAwareProcessor#invokeAwareInterfaces的方法里
+##Aware的主要会被spring处理的实现类
+    Aware的主要会被spring处理的实现类都在ApplicationContextAwareProcessor#invokeAwareInterfaces的方法里
     EnvironmentAware
     EmbeddedValueResolverAware
     ResourceLoaderAware
@@ -240,98 +242,99 @@ Aware的主要会被spring处理的实现类都在ApplicationContextAwareProcess
 
 
 -----------------------------------后置处理器---------------------------都需要断点看下----------------------------------------
-第1次调用好像啥也没处理,全部都是返回null: resolveBeforeInstantiation在初始化之前进行解析
-第2次调用: createBeanInstance创建bean实例的时候,选择对应的构造函数
-    AutowiredAnnotationBeanPostProcessor.determineCandidateConstructors  选出对应的构造函数,并放入缓存
-第3次调用:applyMergedBeanDefinitionPostProcessors()//进行后置处理 @AutoWired @Value的注解的预解析
-    CommonAnnotationBeanPostProcessor.postProcessMergedBeanDefinition  
-        super.postProcessMergedBeanDefinition(beanDefinition, beanType, beanName);//扫描了class,将init和destroy方法合并到BeanDefinition里去
-        findResourceMetadata(beanName, beanType, null);//处理了@Resource注解,合并到BeanDefinition里
-    AutowiredAnnotationBeanPostProcessor.postProcessMergedBeanDefinition
-        寻找bean中所有被@Autowired注释的属性，并将属性封装成InjectedElement类型,合并到BeanDefinition里
-    ApplicationListenerDetector.postProcessMergedBeanDefinition
-        保存到ApplicationListenerDetector类里的map里, 在bean的初始化操作的后置处理里面, 判断是ApplicationListener的话,会将其注册到全局监听器里
-第4次调用:这一步应该怎么做断点? 好像一直没有调用到呀  : addSingletonFactory获取早期bean的地址, 并放入缓存, 全都调到了InstantiationAwareBeanPostProcessorAdapter的方法,然后直接返回了,打断点也没走
-    ConfigurationClassPostProcessor的内部类ImportAwareBeanPostProcessor.getEarlyBeanReference
-    AutowiredAnnotationBeanPostProcessor.getEarlyBeanReference
-    RequiredAnnotationBeanPostProcessor.getEarlyBeanReference
-第5次调用也没做什么处理,只是返回true
-第6次调用:调用 postProcessPropertyValues 方法,填充属性,将其应用到bean
-    ConfigurationClassPostProcessor的内部类ImportAwareBeanPostProcessor
-        如果bean是EnhancedConfiguration类型的,则((EnhancedConfiguration) bean).setBeanFactory(beanFactory);EnhancedConfiguration类型是需要增强的,做代理的,所以要beanFactory
-    CommonAnnotationBeanPostProcessor
-        findResourceMetadata(beanName, bean.getClass(), pvs);//找到被@Resource修饰的属性或方法,前面已经解析过了,这里只是从缓存拿
-        metadata.inject(bean, beanName, pvs);//然后给该属性或者方法进行注入
-    AutowiredAnnotationBeanPostProcessor
+##后置处理器的调用
+    第1次调用好像啥也没处理,全部都是返回null: resolveBeforeInstantiation在初始化之前进行解析
+    第2次调用: createBeanInstance创建bean实例的时候,选择对应的构造函数
+        AutowiredAnnotationBeanPostProcessor.determineCandidateConstructors  选出对应的构造函数,并放入缓存
+    第3次调用:applyMergedBeanDefinitionPostProcessors()//进行后置处理 @AutoWired @Value的注解的预解析
+        CommonAnnotationBeanPostProcessor.postProcessMergedBeanDefinition  
+            super.postProcessMergedBeanDefinition(beanDefinition, beanType, beanName);//扫描了class,将init和destroy方法合并到BeanDefinition里去
+            findResourceMetadata(beanName, beanType, null);//处理了@Resource注解,合并到BeanDefinition里
+        AutowiredAnnotationBeanPostProcessor.postProcessMergedBeanDefinition
+            寻找bean中所有被@Autowired注释的属性，并将属性封装成InjectedElement类型,合并到BeanDefinition里
+        ApplicationListenerDetector.postProcessMergedBeanDefinition
+            保存到ApplicationListenerDetector类里的map里, 在bean的初始化操作的后置处理里面, 判断是ApplicationListener的话,会将其注册到全局监听器里
+    第4次调用:这一步应该怎么做断点? 好像一直没有调用到呀  : addSingletonFactory获取早期bean的地址, 并放入缓存, 全都调到了InstantiationAwareBeanPostProcessorAdapter的方法,然后直接返回了,打断点也没走
+        ConfigurationClassPostProcessor的内部类ImportAwareBeanPostProcessor.getEarlyBeanReference
+        AutowiredAnnotationBeanPostProcessor.getEarlyBeanReference
+        RequiredAnnotationBeanPostProcessor.getEarlyBeanReference
+    第5次调用也没做什么处理,只是返回true
+    第6次调用:调用 postProcessPropertyValues 方法,填充属性,将其应用到bean
+        ConfigurationClassPostProcessor的内部类ImportAwareBeanPostProcessor
+            如果bean是EnhancedConfiguration类型的,则((EnhancedConfiguration) bean).setBeanFactory(beanFactory);EnhancedConfiguration类型是需要增强的,做代理的,所以要beanFactory
+        CommonAnnotationBeanPostProcessor
+            findResourceMetadata(beanName, bean.getClass(), pvs);//找到被@Resource修饰的属性或方法,前面已经解析过了,这里只是从缓存拿
+            metadata.inject(bean, beanName, pvs);//然后给该属性或者方法进行注入
+        AutowiredAnnotationBeanPostProcessor
+            findAutowiringMetadata(beanName, bean.getClass(), pvs);//从缓存中拿到注解元数据， 缓存没有载解析一遍
+            metadata.inject(bean, beanName, pvs);//注入
+                element.inject(target, beanName, pvs);//循环注入，这里有可能是AutowiredFieldElement也可能AutowiredMethodElement，因此调用的inject是2个不同的方法
+                    todo 这里的注入,要仔细看一看,注入里面还有个解析,这个解析也挺多的
+                    AutowiredFieldElement.inject
+        RequiredAnnotationBeanPostProcessor
+            校验必备属性
+    第7次调用: initializeBean 初始化bean的前置调用,调用 postProcessBeforeInitialization 方法
+        ApplicationContextAwareProcessor
+            调用了aware接口的set方法
+        ConfigurationClassPostProcessor的内部类ImportAwareBeanPostProcessor
+            处理了ImportAware的setImportMetadata方法
+        CommonAnnotationBeanPostProcessor
+            在InitDestroyAnnotationBeanPostProcessor.postProcessBeforeInitialization里调用了@PostCust注解的方法
+    第8次调用 initializeBean 初始化bean的后置调用, postProcessAfterInitialization 方法
+        PostProcessorRegistrationDelegate内部类BeanPostProcessorChecker
+            做了个BeanPostProcessor的数量的校验
+        ApplicationListenerDetector
+            判断bean如果是ApplicationListener,会将其注册到全局监听器里
+
+-----------------------------------第6次调用BeanPostProcessor中的Autowired-------------------------------------------------------------------
+##Autowired的处理
+    AutowiredAnnotationBeanPostProcessor.postProcessPropertyValues
         findAutowiringMetadata(beanName, bean.getClass(), pvs);//从缓存中拿到注解元数据， 缓存没有载解析一遍
         metadata.inject(bean, beanName, pvs);//注入
             element.inject(target, beanName, pvs);//循环注入，这里有可能是AutowiredFieldElement也可能AutowiredMethodElement，因此调用的inject是2个不同的方法
-                todo 这里的注入,要仔细看一看,注入里面还有个解析,这个解析也挺多的
+                todo 这里的注入,要仔细看一看
                 AutowiredFieldElement.inject
-    RequiredAnnotationBeanPostProcessor
-        校验必备属性
-第7次调用: initializeBean 初始化bean的前置调用,调用 postProcessBeforeInitialization 方法
-    ApplicationContextAwareProcessor
-        调用了aware接口的set方法
-    ConfigurationClassPostProcessor的内部类ImportAwareBeanPostProcessor
-        处理了ImportAware的setImportMetadata方法
-    CommonAnnotationBeanPostProcessor
-        在InitDestroyAnnotationBeanPostProcessor.postProcessBeforeInitialization里调用了@PostCust注解的方法
-第8次调用 initializeBean 初始化bean的后置调用, postProcessAfterInitialization 方法
-    PostProcessorRegistrationDelegate内部类BeanPostProcessorChecker
-        做了个BeanPostProcessor的数量的校验
-    ApplicationListenerDetector
-        判断bean如果是ApplicationListener,会将其注册到全局监听器里
-
------------------------------------第6次调用BeanPostProcessor中的Autowired-------------------------------------------------------------------
-AutowiredAnnotationBeanPostProcessor.postProcessPropertyValues
-    findAutowiringMetadata(beanName, bean.getClass(), pvs);//从缓存中拿到注解元数据， 缓存没有载解析一遍
-    metadata.inject(bean, beanName, pvs);//注入
-        element.inject(target, beanName, pvs);//循环注入，这里有可能是AutowiredFieldElement也可能AutowiredMethodElement，因此调用的inject是2个不同的方法
-            todo 这里的注入,要仔细看一看
-            AutowiredFieldElement.inject
-                beanFactory.resolveDependency //通过beanFactory获取属性对应的值，根据工厂中定义的bean解析指定的依赖项,根据类型查找依赖,支持 Optional、延迟注入、懒加载注入、正常注入。
-                    1. createOptionalDependency(descriptor, requestingBeanName);//Optional类型处理: JDK8解决空指针异常的 
-                        这里面也是调用了第4. doResolveDependency() 正常情况 真正的解析依赖
-                    2. new DependencyObjectProvider(descriptor, requestingBeanName)//延迟依赖注入支持：依赖类型为ObjectFactory、ObjectProvider
-                        这个类的有个getObject(), 里面会调用createOptionalDependency或者doResolveDependency
-                    3. 延迟依赖注入支持：javaxInjectProviderClass 类注入的特殊处理
-                        Jsr330ProviderFactory().createDependencyProvider
-                    4. 延迟依赖注入支持：@Lazy  getAutowireCandidateResolver().getLazyResolutionProxyIfNecessary
-                        设置了TargetSource类, 这个类里有个getTarget()接口, 里面调用了doResolveDependency
-                    5. doResolveDependency() 正常情况 真正的解析依赖
-                        5.1 快速查找，根据名称查找。 descriptor.resolveShortcut;  AutowiredAnnotationBeanPostProcessor用到, 查找到直接返回了
-                        5.2 注入指定值按照@Qualifier解析; QualifierAnnotationAutowireCandidateResolver解析@Value会用到
-                        5.3 集合依赖，resolveMultipleBeans();  如 Array、List、Set、Map。内部查找依赖也是使用findAutowireCandidates
-                        5.4 单个依赖查询 ，查找匹配到得个数
-                            5.5.1 匹配数为0, 则判断是否为Require,是则抛异常, 否则返回null.
-                            5.5.2 找到多个, 则按@Primary -> @Priority -> 方法名称或字段名称匹配.
-                            5.5.3 找到1个, 则调用getBean(autowiredBeanName, type)获取实例并返回.
-                registerDependentBeans(beanName, autowiredBeanNames);//注册bean之间的依赖关系放入map, 实际并没有注册bean, bean的注册在上一步的doResolveDependency里已经注册并实例化了
-                field.set(bean, value);//注入属性当中
+                    beanFactory.resolveDependency //通过beanFactory获取属性对应的值，根据工厂中定义的bean解析指定的依赖项,根据类型查找依赖,支持 Optional、延迟注入、懒加载注入、正常注入。
+                        1. createOptionalDependency(descriptor, requestingBeanName);//Optional类型处理: JDK8解决空指针异常的 
+                            这里面也是调用了第4. doResolveDependency() 正常情况 真正的解析依赖
+                        2. new DependencyObjectProvider(descriptor, requestingBeanName)//延迟依赖注入支持：依赖类型为ObjectFactory、ObjectProvider
+                            这个类的有个getObject(), 里面会调用createOptionalDependency或者doResolveDependency
+                        3. 延迟依赖注入支持：javaxInjectProviderClass 类注入的特殊处理
+                            Jsr330ProviderFactory().createDependencyProvider
+                        4. 延迟依赖注入支持：@Lazy  getAutowireCandidateResolver().getLazyResolutionProxyIfNecessary
+                            设置了TargetSource类, 这个类里有个getTarget()接口, 里面调用了doResolveDependency
+                        5. doResolveDependency() 正常情况 真正的解析依赖
+                            5.1 快速查找，根据名称查找。 descriptor.resolveShortcut;  AutowiredAnnotationBeanPostProcessor用到, 查找到直接返回了
+                            5.2 注入指定值按照@Qualifier解析; QualifierAnnotationAutowireCandidateResolver解析@Value会用到
+                            5.3 集合依赖，resolveMultipleBeans();  如 Array、List、Set、Map。内部查找依赖也是使用findAutowireCandidates
+                            5.4 单个依赖查询 ，查找匹配到得个数
+                                5.5.1 匹配数为0, 则判断是否为Require,是则抛异常, 否则返回null.
+                                5.5.2 找到多个, 则按@Primary -> @Priority -> 方法名称或字段名称匹配.
+                                5.5.3 找到1个, 则调用getBean(autowiredBeanName, type)获取实例并返回.
+                    registerDependentBeans(beanName, autowiredBeanNames);//注册bean之间的依赖关系放入map, 实际并没有注册bean, bean的注册在上一步的doResolveDependency里已经注册并实例化了
+                    field.set(bean, value);//注入属性当中
 -----------------------------------小知识点-------------------------------------------------------------------
-findAutowiredAnnotation: this.autowiredAnnotationTypes
-    @Autowired,@Value,@Inject
-LifecycleElement:表示方法上有注解,然后封装成此类
-LifecycleMetadata:bean带注解的,并且和init/destroy相关的方法封装成类, 说白了就是带@PostConstruct/@PreDestry的方法封装成的类
-    LifecycleMetadata看表面意思就是和生命周期相关的元数据.
-InjectedElement: 注入相关的元素 包括@Resource,@Autowired
-InjectionMetadata: 注入相关的原数据
-EnhancedConfiguration:是一个标记接口,是让所有@configuration cglib子类实现
+##小知识点
+    findAutowiredAnnotation: this.autowiredAnnotationTypes
+        @Autowired,@Value,@Inject
+    LifecycleElement:表示方法上有注解,然后封装成此类
+    LifecycleMetadata:bean带注解的,并且和init/destroy相关的方法封装成类, 说白了就是带@PostConstruct/@PreDestry的方法封装成的类
+        LifecycleMetadata看表面意思就是和生命周期相关的元数据.
+    InjectedElement: 注入相关的元素 包括@Resource,@Autowired
+    InjectionMetadata: 注入相关的原数据
+    EnhancedConfiguration:是一个标记接口,是让所有@configuration cglib子类实现
+    一般会自定义哪些后置处理器? 是要根据类型吧, 每一个调用的地方的类型和方法都不一样.
 
-一般会自定义哪些后置处理器? 是要根据类型吧, 每一个调用的地方的类型和方法都不一样.
+##AOP切面的解析
+切面的解析是在AspectJAutoProxyBeanDefinitionParser的parse函数中进行
 
 
 
--------------------------------容器引入bean的几种方式---------------------------------------
-@Bean
-@Import({HiService.class})  可写入多个
-@Import({MyImportSelector.class})   MyImportSelector implements ImportSelector
-@Import({MyImportBeanDefinitionRegistrar.class})   MyImportBeanDefinitionRegistrar implements ImportBeanDefinitionRegistrar 
--------------------------------bean属性改成配置---------------------------------------
-@Value 写到一个个属性,支持SpEL,不支持JSR303数据校验	
-@ConfigurationProperties 直接写到bean类上即可,不支持SpEL,支持JSR303数据校验	
 
+
+
+
+    
 
 
 
