@@ -327,10 +327,20 @@ new AnnotationConfigApplicationContext(Config.class)
 
 ##AOP切面的解析
 切面的解析是在AspectJAutoProxyBeanDefinitionParser的parse函数中进行
+    
+    ／／注册 AnnotationAwareAspectJAutoProxyCreator
+    AopNamespaceUtils.registerAspectJAnnotationAutoProxyCreatorIfNecessary(parserContext, element);
+        AopConfigUtils.registerAspectJAnnotationAutoProxyCreatorIfNecessary注册或者升级 AnnotationAwareAspectJAutoProxyCeator
+        
+        useClassProxyingIfNecessary 处理 oxy-target-class 以及 expose-proxy 属性
+        
+        registerComponentIfNecessary 注册组件并通知,便于监听器做进一步处理
+        
+    //对于注解中子类的处理
+	extendBeanDefinition(element, parserContext);
 
-
-
-
+上面注册了 AnnotationAwareAspectJAutoProxyCreator,那么这个类干了啥?
+    
 
 
 
