@@ -148,8 +148,11 @@ new AnnotationConfigApplicationContext(Config.class)
         如果用户想获取FactoryBean本身，也是直接返回
     没获取到则判断是否有父工厂, 
         有则调用父工厂的doGetBean或getBean方法,一般只有spring和springmvc的时候才有父子工厂
-        没有父工厂则先调用getBean方法实例化依赖的bean,再调用createBean创建这个bean
-           createBean();//创建bean,详细看下方
+        没有父工厂则先调用getBean方法实例化依赖的bean,
+            如果是单例bean,调用getSingleton(String beanName, ObjectFactory<?> singletonFactory)方法,并传入一个singletonFactory的实现
+                从一级缓存中取数据,没取到则调用singletonFactory.getObject()进行创建
+                    实现内部是调用createBean方法再调用createBean创建这个bean, createBean();//创建bean,详细看下方
+                然后放入一级缓存中
     getTypeConverter().convertIfNecessary//检查所需类型是否与实际 bean 实例的类型匹配, 不匹配则进行转换
     
     说明:一级缓存存放的是完整的bean,二级缓存存放的是早期对象,三级缓存存放的是ObjectFactory对象
