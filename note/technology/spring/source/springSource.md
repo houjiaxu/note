@@ -195,11 +195,12 @@ new AnnotationConfigApplicationContext(Config.class)
                 RequiredAnnotationBeanPostProcessor(处理@Required注解)     internalRequiredAnnotationProcessor
                 ApplicationListenerDetector
         addSingletonFactory(beanName, () -> getEarlyBeanReference(beanName, mbd, bean));//缓存单例到三级缓存中,3个缓存都存了
-            getEarlyBeanReference()//把我们的早期对象包装成一个singletonFactory对象 该对象提供了一个getObject方法,该方法内部调用getEarlyBeanReference方法
+            getEarlyBeanReference()//把我们的早期对象包装成一个singletonFactory对象 该对象提供了一个getObject方法,该方法内部调用getEarlyBeanReference方法,这是三级缓存
                 SmartInstantiationAwareBeanPostProcessor.getEarlyBeanReference(第4次调用)
                     ConfigurationClassPostProcessor的内部类ImportAwareBeanPostProcessor
                     AutowiredAnnotationBeanPostProcessor(处理@Autowired注解)    internalAutowiredAnnotationProcessor
                     RequiredAnnotationBeanPostProcessor(处理@Required注解)     internalRequiredAnnotationProcessor
+                    如果有代理/aop的话会调用这个类AbstractAutoProxyCreator,这里会创建代理
         populateBean//属性赋值 给我们的属性进行赋值(调用set方法进行赋值)
             InstantiationAwareBeanPostProcessor.postProcessAfterInstantiation//在属性被填充前，后置处理器一个修改bean 状态的机会。(第5次调用)
                 ConfigurationClassPostProcessor的内部类ImportAwareBeanPostProcessor
