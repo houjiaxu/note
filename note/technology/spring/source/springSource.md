@@ -136,11 +136,26 @@ new AnnotationConfigApplicationContext(Config.class)
 ------------------------------------------------------------------------------------------------------
 ###AbstractBeanFactory#doGetBean
     getSingleton(beanName);//尝试去缓存中获取对象
-        //获取到后调用getObjectForBeanInstance//再获取真正的对象,如果获取到的是普通的单例bean,则会直接返回。如果是FactoryBean类型的，则需调用 getObject 工厂方法获取真正的bean实例,如果用户想获取FactoryBean本身，也是直接返回
-        //没获取到则判断是否有父工厂, 有则调用父工厂的doGetBean或getBean方法,一般只有spring和springmvc的时候才有父子工厂
-            没有父工厂则先调用getBean方法实例化依赖的bean,再调用createBean创建这个bean
-                createBean();//创建bean,详细看下方
+        先去一级缓存中取
+        一级缓存没取到 && 正在被创建  表明是循环依赖
+        则从二级缓存中获取对象
+        二级缓存没获取到,则从三级缓存中获取,
+        从三级缓存中取出来的是ObjectFactory对象,调用该对象的getObject得到早期对象(裸对象/被代理后的对象)
+        然后将早期对象放入二级缓存,再将ObjectFactory从三级缓存当中移除.
+    获取到后调用getObjectForBeanInstance,再获取真正的对象,
+        如果获取到的是普通的单例bean,则会直接返回。
+        如果是FactoryBean类型的，则需调用 getObject 工厂方法获取真正的bean实例,
+        如果用户想获取FactoryBean本身，也是直接返回
+    没获取到则判断是否有父工厂, 
+        有则调用父工厂的doGetBean或getBean方法,一般只有spring和springmvc的时候才有父子工厂
+        没有父工厂则先调用getBean方法实例化依赖的bean,再调用createBean创建这个bean
+           createBean();//创建bean,详细看下方
     getTypeConverter().convertIfNecessary//检查所需类型是否与实际 bean 实例的类型匹配, 不匹配则进行转换
+    
+    说明:一级缓存存放的是完整的bean,二级缓存存放的是早期对象,三级缓存存放的是ObjectFactory对象
+    二级缓存解决的是完整bean和早期bean的分离,如果只有一级缓存,当多个线程时,一个线程刚创建完早期对象,就有另一个线程在缓存中取,那么取到的则是早期对象, 是不完整的bean
+    三级缓存解决的是解耦问题(也有说是aop的),如果只有二级缓存,也是可以解决代理对象的,就是要在二级缓存中取不到对象时,直接调用后置处理器,来创建一个对象,而spring是在bean的后置处理器被调用时才创建的.
+    如果没有代理/aop,看起来是没有走到三级缓存的, 但是有老师说是走到了三级缓存的.需要后续再确定吧?
 ------------------------------------------------------------------------------------------------------
 ###createBean();//创建bean
     根据beanName解析出Class,设置到RootBeanDefinition中
