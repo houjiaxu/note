@@ -1,4 +1,3 @@
-
 ##cglib和jdk动态代理的区别
 
 cglib代理中的类中的方法中调用自身类的方法仍然会被代理,而jdk不会.
@@ -12,7 +11,18 @@ cglib代理中的类中的方法中调用自身类的方法仍然会被代理,�
 3.调用, 在jdkDynamicAopProxy的invoke方法里进行调用的.
 
 ##AOP切面的解析
-1.怎么找切面是在哪里解析的?
+1.解析的大致逻辑
+
+在第一次调用bean的后置处理器的时候进行解析的,会拿到所有的bean定义,判断是否被@Aspectj标记了,是的话会将@before/@after标注的方法解析成一个个advisor
+
+advisor由2部分组成: advise(织入的代码)  poincut(切点)
+
+BeanNameAutoProxyCreator这个类可以根据beannames和interceptornames创建代理
+
+创建bean动态代理的地方: bean初始化之后的bean的后置处理器里创建动态代理, 会拿到所有的advisor, 循环(责任链式的调用,当前切点动态创建完,把创建完的bean传入下一个advisor再进行代理), 根据pointcut的matchs方法对bean进行匹配, 匹配成功,则创建动态代理, 最终的对象可能是被代理了很多次
+
+
+2.怎么找切面是在哪里解析的?
 
 spring通常整合扩展点的地方都会搞个@Enable**, 通常的解析就是从这个注解里面找
 aop的解析就从@EnableAspectJAutoProxy里找,这个注解上又引入了@Import(AspectJAutoProxyRegistrar.class)
@@ -28,19 +38,8 @@ AspectJAutoProxyRegistrar实现了ImportBeanDefinitionRegistrar,重写了registe
 ![Alt](img/1652275823044_123.png)
 是在一个shouldSkip方法里进行解析的, 注意看子类重写.
 
-2.解析的大致逻辑
-
-在第一次调用bean的后置处理器的时候进行解析的,会拿到所有的bean定义,判断是否被@Aspectj标记了,是的话会将@before/@after标注的方法解析成一个个advisor
-
-advisor由2部分组成: advise(织入的代码)  poincut(切点)
-
-BeanNameAutoProxyCreator这个类可以根据beannames和interceptornames创建代理
-
-创建bean动态代理的地方: bean初始化之后的bean的后置处理器里创建动态代理, 会拿到所有的advisor, 循环(责任链式的调用,当前切点动态创建完,把创建完的bean传入下一个advisor再进行代理), 根据pointcut的matchs方法对bean进行匹配, 匹配成功,则创建动态代理, 最终的对象可能是被代理了很多次
 
 3.真正的解析切面
-
-切面的解析是在AspectJAutoProxyBeanDefinitionParser的parse函数中进行
 
     ／／注册 AnnotationAwareAspectJAutoProxyCreator
     AopNamespaceUtils.registerAspectJAnnotationAutoProxyCreatorIfNecessary(parserContext, element);
