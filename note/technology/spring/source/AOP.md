@@ -36,10 +36,34 @@ AspectJAutoProxyRegistrar实现了ImportBeanDefinitionRegistrar,重写了registe
 
 因为在bean初始化之后可能调用动态代理,所以该类实现了BeanPostProcessor,
 ![Alt](img/1652275823044_123.png)
+
+在第1次调用bean的后置处理器的时候进行解析的,所以要看InstantiationAwareBeanPostProcessor#postProcessBeforeInstantiation在解析类中的实现,根据如下类图
+![Alt](img/a29041daedf060ed92623b71842d7b0.png)
+在AbstractAutoProxyCreator中找到了postProcessBeforeInstantiation方法的实现
+
+
+3.真正将切面解析成Advisor
+
+AbstractAutoProxyCreator#postProcessBeforeInstantiation
+
+    没有beanName 或者 没有包含在targetSourcedBeans中（一般都不会包含，因为targetSource需要手动设置，一般情况不会设置）
+        如果被解析过,直接返回
+        isInfrastructureClass(beanClass) || shouldSkip(beanClass, beanName)//这一步中有2个方法(2块逻辑), 目的是判断该对象是否应该跳过创建代理这一步
+            isInfrastructureClass是判断是否被以下注解标注了,标注的话就不用解析了,没有被标注就继续走shouldSkip方法,Advice/Pointcut/Advisor/AopInfrastructureBean
+            shouldSkip, 找到其实现方法,在AspectJAwareAdvisorAutoProxyCreator中
+                findCandidateAdvisors //找到候选的Advisors(通知  前置通知、后置通知等..)
+                    看实现方法在AnnotationAwareAspectJAutoProxyCreator#findCandidateAdvisors
+                        aspectJAdvisorsBuilder.buildAspectJAdvisors()//构建Advisor
+                            todo ..........下次接着看
+                循环找到的通知,不是AspectJPointcutAdvisor就返回false, 这一步是针对xml解析的, AspectJPointcutAdvisor 是xml <aop:advisor 解析的对象,如果  <aop:aspect ref="beanName"> 是当前beanName 就说明当前bean是切面类  那就跳过。
+        getCustomTargetSource // 找到代理目标对象,如果不为空,则进行创建代理
+        getAdvicesAndAdvisorsForBean // todo
+        createProxy //todo
+
 是在一个shouldSkip方法里进行解析的, 注意看子类重写.
 
-
-3.真正的解析切面
+    第2步中找到了切面是在AnnotationAwareAspectJAutoProxyCreator.class的后置处理方法中进行解析的, 又是在第1次调用bean的后置处理器的时候进行解析的,
+    所以, 查找到第一次
 
     ／／注册 AnnotationAwareAspectJAutoProxyCreator
     AopNamespaceUtils.registerAspectJAnnotationAutoProxyCreatorIfNecessary(parserContext, element);
