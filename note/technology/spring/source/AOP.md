@@ -52,17 +52,41 @@ AbstractAutoProxyCreator#postProcessBeforeInstantiation
             isInfrastructureClass是判断是否被以下注解标注了,标注的话就不用解析了,没有被标注就继续走shouldSkip方法,Advice/Pointcut/Advisor/AopInfrastructureBean
             shouldSkip, 找到其实现方法,在AspectJAwareAdvisorAutoProxyCreator中
                 findCandidateAdvisors //找到候选的Advisors(通知  前置通知、后置通知等..)
-                    看实现方法在AnnotationAwareAspectJAutoProxyCreator#findCandidateAdvisors
-                        aspectJAdvisorsBuilder.buildAspectJAdvisors()//构建Advisor
-                            todo ..........下次接着看
                 循环找到的通知,不是AspectJPointcutAdvisor就返回false, 这一步是针对xml解析的, AspectJPointcutAdvisor 是xml <aop:advisor 解析的对象,如果  <aop:aspect ref="beanName"> 是当前beanName 就说明当前bean是切面类  那就跳过。
         getCustomTargetSource // 找到代理目标对象,如果不为空,则进行创建代理
-        getAdvicesAndAdvisorsForBean // todo
+        getAdvicesAndAdvisorsForBean //调用的是AbstractAdvisorAutoProxyCreator#getAdvicesAndAdvisorsForBean
+            findCandidateAdvisors//从缓存中找出切面
+            findAdvisorsThatCanApply // 判断我们的通知能不能作用到当前的类上（切点是否命中当前Bean）
+                循环Advisors,处理实现了IntroductionAdvisor的Advisor, 看是否能匹配bean
+                循环Advisors,处理没有实现IntroductionAdvisor的Advisor, 看是否能匹配bean
+                上面的能否匹配都是调用AopUtils#canApply方法
+                    如果实现了IntroductionAdvisor,则直接调用matches方法进行匹配,其实就是调用切点表达式进行匹配
+                    如果实现了PointcutAdvisor,则调用canApply的一个重载方法,查找真正能用的增强器
+                        先进行类级别的过滤,找出能匹配的Advisor
+                        再进行方法级别的过滤
+                            如果Pointcut.getMethodMatcher()返回TrueMethodMatcher则匹配所有方法
+                            否则判断匹配器是不是IntroductionAwareMethodMatcher,只有AspectJExpressionPointCut才会实现这个接口
+                            利用反射获取被代理类的所有方法,然后调用introductionAwareMethodMatcher.matches方法进行匹配
+                    否则(即没有Pointcut),直接返回适用
+            extendAdvisors //对bean进行扩展
+            sortAdvisors //对advisor进行排序
         createProxy //todo
+---------------------------------------findCandidateAdvisors查找候选的Advisors---------------------------------------------------------------------------------
+findCandidateAdvisors中先从缓存中查找, 没有的话就进行解析
 
-是在一个shouldSkip方法里进行解析的, 注意看子类重写.
-
-    第2步中找到了切面是在AnnotationAwareAspectJAutoProxyCreator.class的后置处理方法中进行解析的, 又是在第1次调用bean的后置处理器的时候进行解析的,
+    看实现方法在AnnotationAwareAspectJAutoProxyCreator#findCandidateAdvisors
+        aspectJAdvisorsBuilder.buildAspectJAdvisors()//构建Advisor
+            从IOC容器中找到所有的bean的beanName,循环
+                判断是否是切面类(有没有被@Aspect标注 && 没有被AspectJ编译过), 是则会放入缓存当中(标识这个类是一个切面类)
+                是则根据beanname创建一个Advisor, advisorFactory.getAdvisors   
+                    获取改切面类中所有方法(@PointCut标注的方法除外),然后将其他的@Before,@After等等注解标注的方法解析成Advisor   
+                       解析成的Advisor的实现类是 InstantiationModelAwarePointcutAdvisorImpl,里面包含了切点表达式 / 通知       
+                                       
+                                       
+                                       
+                                       
+                                       
+第2步中找到了切面是在AnnotationAwareAspectJAutoProxyCreator.class的后置处理方法中进行解析的, 又是在第1次调用bean的后置处理器的时候进行解析的,
     所以, 查找到第一次
 
     ／／注册 AnnotationAwareAspectJAutoProxyCreator
@@ -76,5 +100,4 @@ AbstractAutoProxyCreator#postProcessBeforeInstantiation
     //对于注解中子类的处理
 	extendBeanDefinition(element, parserContext);
 
-上面注册了 AnnotationAwareAspectJAutoProxyCreator,那么这个类干了啥?
     
