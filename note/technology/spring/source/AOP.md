@@ -69,8 +69,23 @@ AbstractAutoProxyCreator#postProcessBeforeInstantiation
                             利用反射获取被代理类的所有方法,然后调用introductionAwareMethodMatcher.matches方法进行匹配
                     否则(即没有Pointcut),直接返回适用
             extendAdvisors //对bean进行扩展
-            sortAdvisors //对advisor进行排序
+                实际调用重写的方法AspectJAwareAdvisorAutoProxyCreator#extendAdvisors,将上面匹配到的Advisor做成责任链,方便后续调用
+            sortAdvisors //对advisor进行排序 todo看下视频的排序
         createProxy //todo
+            创建一个代理工厂ProxyFactory,并设置是jdk代理还是cglib代理: 总之一句话,跟接口有关的(被代理类本身是接口或实现了接口)都使用jdk动态代理,否则使用cglib代理
+                如果设置了<aop:aspectj-autoproxy proxy-target-class="true"/>则强制使用cglib代理, proxy-target-class属性值决定是基于接口/类进行创建代理,基于类的则需要使用cglib,因为jdk代理需要接口。
+                如果ProxyTargetClass没有进行设置,
+                   则判断是否应该使用cglib(取bean定义的preserveTargetClass是否为true),并设置一下,实际创建的时候会用到
+                   如果上面判断是false,则检查被代理的类有没有接口,没有接口的话则仍然使用cglib代理
+            customizeProxyFactory(用于自定义代理工厂的扩展点)
+            proxyFactory.getProxy //进行实际的创建代理.
+                createAopProxy().getProxy(classLoader)
+                    createAopProxy()//用来获取代理工厂, 到底是cglib还是jdk
+                        如果前面设置了使用cglib或者被代理类没有实现别的接口, 就判断代理类是否是接口,如果代理类是接口,则使用JDK动态代理否则使用cglib动态代理
+                        如果前面没有设置使用cglib动态代理,则使用JDK动态代理
+                    getProxy(classLoader)
+                        JdkDynamicAopProxy: Proxy.newProxyInstance(classLoader, proxiedInterfaces, this);
+                        CglibAopProxy: Enhancer.create()
 ---------------------------------------findCandidateAdvisors查找候选的Advisors---------------------------------------------------------------------------------
 findCandidateAdvisors中先从缓存中查找, 没有的话就进行解析
 
@@ -81,11 +96,18 @@ findCandidateAdvisors中先从缓存中查找, 没有的话就进行解析
                 是则根据beanname创建一个Advisor, advisorFactory.getAdvisors   
                     获取改切面类中所有方法(@PointCut标注的方法除外),然后将其他的@Before,@After等等注解标注的方法解析成Advisor   
                        解析成的Advisor的实现类是 InstantiationModelAwarePointcutAdvisorImpl,里面包含了切点表达式 / 通知       
-                                       
-                                       
-                                       
-                                       
-                                       
+                 
+---------------------------------------小知识点---------------------------------------------------------------------------------
+spring中的动态代理,使用JDK/cglib动态代理的情况?
+
+    1.没有设置基于类进行代理 || 被代理类有实现接口 则使用JDK动态代理
+    2.被代理类本身是个接口 则使用JDK动态代理.
+    3.除了1,2的2种情况都使用cglib进行动态代理
+    总之一句话,跟接口有关的(被代理类本身是接口或实现了接口)都使用jdk动态代理,否则使用cglib代理
+
+
+
+
 第2步中找到了切面是在AnnotationAwareAspectJAutoProxyCreator.class的后置处理方法中进行解析的, 又是在第1次调用bean的后置处理器的时候进行解析的,
     所以, 查找到第一次
 
