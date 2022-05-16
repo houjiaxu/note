@@ -96,7 +96,9 @@ findCandidateAdvisors中先从缓存中查找, 没有的话就进行解析
                 是则根据beanname创建一个Advisor, advisorFactory.getAdvisors   
                     获取改切面类中所有方法(@PointCut标注的方法除外),然后将其他的@Before,@After等等注解标注的方法解析成Advisor 
                        获得当前通知的切点表达式  getPointcut
-                       解析成的Advisor的实现类是 InstantiationModelAwarePointcutAdvisorImpl,里面包含了切点表达式 / 通知       
+                       new InstantiationModelAwarePointcutAdvisorImpl() 解析成的Advisor,里面包含了切点表达式 / 通知
+                            instantiateAdvice 这个类的构造方法中,把切面中的通知构造为一个个的advice对象  
+                                ReflectiveAspectJAdvisorFactory#aspectJAdvisorFactory.getAdvice  分别有AtAround / AtBefore / AtAfter / AtAfterReturning / AtAfterThrowing
                  
 ---------------------------------------小知识点---------------------------------------------------------------------------------
 spring中的动态代理,使用JDK/cglib动态代理的情况?
