@@ -94,7 +94,8 @@ findCandidateAdvisors中先从缓存中查找, 没有的话就进行解析
             从IOC容器中找到所有的bean的beanName,循环
                 判断是否是切面类(有没有被@Aspect标注 && 没有被AspectJ编译过), 是则会放入缓存当中(标识这个类是一个切面类)
                 是则根据beanname创建一个Advisor, advisorFactory.getAdvisors   
-                    获取改切面类中所有方法(@PointCut标注的方法除外),然后将其他的@Before,@After等等注解标注的方法解析成Advisor   
+                    获取改切面类中所有方法(@PointCut标注的方法除外),然后将其他的@Before,@After等等注解标注的方法解析成Advisor 
+                       获得当前通知的切点表达式  getPointcut
                        解析成的Advisor的实现类是 InstantiationModelAwarePointcutAdvisorImpl,里面包含了切点表达式 / 通知       
                  
 ---------------------------------------小知识点---------------------------------------------------------------------------------
