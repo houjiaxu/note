@@ -99,7 +99,11 @@ findCandidateAdvisors中先从缓存中查找, 没有的话就进行解析
                        new InstantiationModelAwarePointcutAdvisorImpl() 解析成的Advisor,里面包含了切点表达式 / 通知
                             instantiateAdvice 这个类的构造方法中,把切面中的通知构造为一个个的advice对象  
                                 ReflectiveAspectJAdvisorFactory#aspectJAdvisorFactory.getAdvice  分别有AtAround / AtBefore / AtAfter / AtAfterReturning / AtAfterThrowing
-                 
+---------------------------------------其他创建动态代理的地方---------------------------------------------------------------------------------
+解决循环依赖的时候
+初始化之后
+
+
 ---------------------------------------小知识点---------------------------------------------------------------------------------
 spring中的动态代理,使用JDK/cglib动态代理的情况?
 
@@ -111,18 +115,5 @@ spring中的动态代理,使用JDK/cglib动态代理的情况?
 
 
 
-第2步中找到了切面是在AnnotationAwareAspectJAutoProxyCreator.class的后置处理方法中进行解析的, 又是在第1次调用bean的后置处理器的时候进行解析的,
-    所以, 查找到第一次
-
-    ／／注册 AnnotationAwareAspectJAutoProxyCreator
-    AopNamespaceUtils.registerAspectJAnnotationAutoProxyCreatorIfNecessary(parserContext, element);
-        AopConfigUtils.registerAspectJAnnotationAutoProxyCreatorIfNecessary注册或者升级 AnnotationAwareAspectJAutoProxyCeator
-        
-        useClassProxyingIfNecessary 处理 oxy-target-class 以及 expose-proxy 属性
-        
-        registerComponentIfNecessary 注册组件并通知,便于监听器做进一步处理
-        
-    //对于注解中子类的处理
-	extendBeanDefinition(element, parserContext);
 
     
