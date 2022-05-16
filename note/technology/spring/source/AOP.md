@@ -99,11 +99,17 @@ findCandidateAdvisors中先从缓存中查找, 没有的话就进行解析
                        new InstantiationModelAwarePointcutAdvisorImpl() 解析成的Advisor,里面包含了切点表达式 / 通知
                             instantiateAdvice 这个类的构造方法中,把切面中的通知构造为一个个的advice对象  
                                 ReflectiveAspectJAdvisorFactory#aspectJAdvisorFactory.getAdvice  分别有AtAround / AtBefore / AtAfter / AtAfterReturning / AtAfterThrowing
----------------------------------------其他创建动态代理的地方---------------------------------------------------------------------------------
-解决循环依赖的时候
-初始化之后
+                                然后进行排序,AtAround / AtBefore / AtAfter / AtAfterReturning / AtAfterThrowing的顺序由先到后
+---------------------------------------创建动态代理的地方---------------------------------------------------------------------------------
+解决循环依赖的时候,先不管,值看正常情况下的.也就是初始化之后的.
+初始化之后的后置处理器调用AbstractAutoProxyCreator#postProcessAfterInitialization
+    
+    earlyProxyReferences.remove//之前循环依赖创建的动态代理 如果是现在的bean 就不再创建，，并且移除
+    wrapIfNecessary// 该方法将会返回动态代理实例
+        todo
 
-
+方法的调用会走到JdkDynamicAopProxy#invoke接口
+    todo
 ---------------------------------------小知识点---------------------------------------------------------------------------------
 spring中的动态代理,使用JDK/cglib动态代理的情况?
 
