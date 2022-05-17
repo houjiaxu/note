@@ -53,7 +53,7 @@ AbstractAutoProxyCreator#postProcessBeforeInstantiation
             shouldSkip, 找到其实现方法,在AspectJAwareAdvisorAutoProxyCreator中
                 findCandidateAdvisors //找到候选的Advisors(通知  前置通知、后置通知等..)
                 循环找到的通知,不是AspectJPointcutAdvisor就返回false, 这一步是针对xml解析的, AspectJPointcutAdvisor 是xml <aop:advisor 解析的对象,如果  <aop:aspect ref="beanName"> 是当前beanName 就说明当前bean是切面类  那就跳过。
-        getCustomTargetSource // 找到代理目标对象,如果不为空,则进行创建代理
+        getCustomTargetSource // 找到代理目标对象,如果不为空,则进行创建代理,此处是为空的,一般在上面就直接return了.
         getAdvicesAndAdvisorsForBean //调用的是AbstractAdvisorAutoProxyCreator#getAdvicesAndAdvisorsForBean
             findCandidateAdvisors//从缓存中找出切面
             findAdvisorsThatCanApply // 判断我们的通知能不能作用到当前的类上（切点是否命中当前Bean）
@@ -104,9 +104,12 @@ findCandidateAdvisors中先从缓存中查找, 没有的话就进行解析
 解决循环依赖的时候,先不管,值看正常情况下的.也就是初始化之后的.
 初始化之后的后置处理器调用AbstractAutoProxyCreator#postProcessAfterInitialization
     
-    earlyProxyReferences.remove//之前循环依赖创建的动态代理 如果是现在的bean 就不再创建，，并且移除
+    earlyProxyReferences.remove//之前循环依赖创建的动态代理 如果是现在的bean 就不再创建，并且移除
     wrapIfNecessary// 该方法将会返回动态代理实例
-        todo
+        已被处理过/不需要增强的直接返回,
+        isInfrastructureClass || shouldSkip //是不是基础的bean 是不是需要跳过的,其实前面已经解析过一遍了.
+        getAdvicesAndAdvisorsForBean //根据当前bean找到匹配的advisor, 过程参考上面的"真正将切面解析成Advisor"
+        createProxy //创建代理对象, 过程参考上面的"真正将切面解析成Advisor"
 
 方法的调用会走到JdkDynamicAopProxy#invoke接口
     todo
