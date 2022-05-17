@@ -264,6 +264,11 @@ spring是怎么避免读取到不完整的bean的? 锁住一级缓存后面的�
 
 -----------------------------------后置处理器---------------------------都需要断点看下----------------------------------------
 ##后置处理器的调用
+
+[九次调用图](https://www.processon.com/view/link/615c4965f346fb69a724dc8c)
+
+[可参考的blog](https://baijiahao.baidu.com/s?id=1712838078515652713&wfr=spider&for=pc)
+
     第1次调用好像啥也没处理,全部都是返回null: resolveBeforeInstantiation在初始化之前进行解析
     第2次调用: createBeanInstance创建bean实例的时候,选择对应的构造函数
         AutowiredAnnotationBeanPostProcessor.determineCandidateConstructors  选出对应的构造函数,并放入缓存
@@ -284,7 +289,7 @@ spring是怎么避免读取到不完整的bean的? 锁住一级缓存后面的�
         ConfigurationClassPostProcessor的内部类ImportAwareBeanPostProcessor
             如果bean是EnhancedConfiguration类型的,则((EnhancedConfiguration) bean).setBeanFactory(beanFactory);EnhancedConfiguration类型是需要增强的,做代理的,所以要beanFactory
         CommonAnnotationBeanPostProcessor
-            findResourceMetadata(beanName, bean.getClass(), pvs);//找到被@Resource修饰的属性或方法,前面已经解析过了,这里只是从缓存拿
+            findResourceMetadata(beanName, bean.getClass(), pvs);//主要处理@Resource,找到被@Resource修饰的属性或方法,前面已经解析过了,这里只是从缓存拿
             metadata.inject(bean, beanName, pvs);//然后给该属性或者方法进行注入
         AutowiredAnnotationBeanPostProcessor
             findAutowiringMetadata(beanName, bean.getClass(), pvs);//从缓存中拿到注解元数据， 缓存没有载解析一遍
