@@ -24,8 +24,12 @@ BeanNameAutoProxyCreator这个类可以根据beannames和interceptornames创建�
 
 2.怎么找切面是在哪里解析的?
 
+启动->解析的大致过程: spring启动,扫描包,在ConfigurationClassPostProcessor里解析配置类,如果配置类加了@EnableAspectJAutoProxy注解,就会解析里面的@Import注解,
+从而注册在这个方法中注册了AnnotationAwareAspectJAutoProxyCreator的bean定义, 然后在创建bean的步骤里,创建任何一个bean的时候,都会有第一次调用后置处理器,
+也就是AnnotationAwareAspectJAutoProxyCreator的处理方法会被调用,那么这个时候就会去解析切面,进行匹配bean. 也就是说此时切面被解析.
+
 spring通常整合扩展点的地方都会搞个@Enable**, 通常的解析就是从这个注解里面找
-aop的解析就从@EnableAspectJAutoProxy里找,这个注解上又引入了@Import(AspectJAutoProxyRegistrar.class)
+aop的解析就从@EnableAspectJAutoProxy里找(实际的spring解析就是解析标注了@EnableAspectJAutoProxy注解的类的时候开始注册bean定义的),这个注解上又引入了@Import(AspectJAutoProxyRegistrar.class)
 AspectJAutoProxyRegistrar实现了ImportBeanDefinitionRegistrar,重写了registerBeanDefinitions接口,此接口是可以向容器中注册bean定义的.
 该方法的实现中调用了AopConfigUtils.registerAspectJAnnotationAutoProxyCreatorIfNecessary(registry);
 在这个方法中注册了AnnotationAwareAspectJAutoProxyCreator.class的beanDefinition, 这个类实现了BeanPostProcessor.
