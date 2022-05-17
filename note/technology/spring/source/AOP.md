@@ -140,5 +140,6 @@ spring事务传播机制
 
 ![Alt](img/641652774134_.pic.jpg)
 
+[源码分析参考blog](https://blog.csdn.net/JavaTeachers/article/details/123127031)
 
-
+[源码分析参考blog](https://www.jianshu.com/p/45780e33b4b1)
