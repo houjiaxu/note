@@ -19,6 +19,7 @@
 
 spring中有很多的重要事件: 刷新,开启, 关闭等等, 如果要做扩展,可以监听这些事件.
     只需在某个方法上加上@EventListener(ContextStartedEvent.class)即可,括号内的类是你要监听的事件.
+    ![Alt](source/img/631652767409_.pic.jpg)
 
 spring中的早期事件: 从refresh方法中的prepareRefresh方法开始到registerListener方法之前中所有的向earlyApplicationEvents中添加的事件
 早期事件会在registerListener方法中进行调用,并清空.

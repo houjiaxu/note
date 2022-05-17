@@ -47,7 +47,7 @@ AspectJAutoProxyRegistrar实现了ImportBeanDefinitionRegistrar,重写了registe
 
 
 3.真正将切面解析成Advisor
-
+[脑图](https://www.processon.com/view/link/5f1958a35653bb7fd24d0aad)
 AbstractAutoProxyCreator#postProcessBeforeInstantiation
 
     没有beanName 或者 没有包含在targetSourcedBeans中（一般都不会包含，因为targetSource需要手动设置，一般情况不会设置）
@@ -116,7 +116,12 @@ findCandidateAdvisors中先从缓存中查找, 没有的话就进行解析
         createProxy //创建代理对象, 过程参考上面的"真正将切面解析成Advisor"
 
 方法的调用会走到JdkDynamicAopProxy#invoke接口
-    todo
+[详细参考步骤](https://www.processon.com/view/link/5f4dd513e0b34d1abc735998)
+
+    advised.getInterceptorsAndDynamicInterceptionAdvice //把我们的aop的advisor 全部转化为拦截器， 通过责任链模式 依此调用
+    如果拦截器链为空, 直接调用method.invoke().
+    否则调用invocation.proceed()执行方法.
+    
 ---------------------------------------小知识点---------------------------------------------------------------------------------
 spring中的动态代理,使用JDK/cglib动态代理的情况?
 
