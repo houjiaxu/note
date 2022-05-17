@@ -11,6 +11,9 @@ cglib代理中的类中的方法中调用自身类的方法仍然会被代理,�
 3.调用, 在jdkDynamicAopProxy的invoke方法里进行调用的.
 
 ##AOP切面的解析
+
+[可参考blog](https://developer.aliyun.com/article/761230)
+
 1.解析的大致逻辑
 
 在第一次调用bean的后置处理器的时候进行解析的,会拿到所有的bean定义,判断是否被@Aspectj标记了,是的话会将@before/@after标注的方法解析成一个个advisor
