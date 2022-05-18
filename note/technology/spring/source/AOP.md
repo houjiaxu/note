@@ -143,3 +143,48 @@ spring事务传播机制
 [源码分析参考blog](https://blog.csdn.net/JavaTeachers/article/details/123127031)
 
 [源码分析参考blog](https://www.jianshu.com/p/45780e33b4b1)
+使用spring事务首先要配置3个对象: PlatformTransactionManager,DataSource,JdbcTemplate, 然后配置@EnableTransactionManagement开启事务
+
+点击@EnableTransactionManagement注解,点击@Import(TransactionManagementConfigurationSelector.class)中的Selector类,这个类实现了ImportSelector接口,在ConfigurationClassPostProcessor类中会进行解析,
+会解析方法selectImports返回的数组, 然后将其中的类注册成bean定义,最后进行解析.
+
+此处selectImports中有2个类AutoProxyRegistrar和ProxyTransactionManagementConfiguration
+
+1.AutoProxyRegistrar
+    实现了ImportBeanDefinitionRegistrar接口,会调用registerBeanDefinitions注册bean定义
+    AopConfigUtils.registerAutoProxyCreatorIfNecessary(registry);//注册动态代理创建者
+        AopConfigUtils#registerOrEscalateApcAsRequired(InfrastructureAdvisorAutoProxyCreator.class, registry, source);
+            InfrastructureAdvisorAutoProxyCreator是和上面aop中的AnnotationAwareAspectJAutoProxyCreator一样,实现了bean的后置处理器,调用的地方也是一样的.
+
+2.ProxyTransactionManagementConfiguration
+    
+3.同时有@EnableTransactionManagement和@EnableAspectJAutoProxy的时候,动态代理会怎么处理? 创建2遍吗?
+    2个注解最终都会调用这个方法AopConfigUtils#registerOrEscalateApcAsRequired,不同的是aop注册的是AnnotationAwareAspectJAutoProxyCreator,事务注册的是InfrastructureAdvisorAutoProxyCreator
+    在registerOrEscalateApcAsRequired方法中,这2个只有一个beanname即org.springframework.aop.config.internalAutoProxyCreator
+    也就是说多个类前来注册,最终只会覆盖掉的只剩1个, 那么究竟谁会被保留,谁会被覆盖呢?
+    会根据findPriorityForClass方法找出类的优先级, 然后比较优先级, 谁的高就保留谁,谁低就会被覆盖,
+        是根据类在APC_PRIORITY_LIST中的索引来确定优先级
+            APC_PRIORITY_LIST.add(InfrastructureAdvisorAutoProxyCreator.class);// 0  事务动态代理
+            APC_PRIORITY_LIST.add(AspectJAwareAdvisorAutoProxyCreator.class); // 1  
+            APC_PRIORITY_LIST.add(AnnotationAwareAspectJAutoProxyCreator.class); // 2  AOP动态代理
+    所以最终是保留了AOP注册的类AnnotationAwareAspectJAutoProxyCreator
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
