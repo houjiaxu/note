@@ -151,14 +151,41 @@ spring事务传播机制
 此处selectImports中有2个类AutoProxyRegistrar和ProxyTransactionManagementConfiguration
 
 1.AutoProxyRegistrar
+
     实现了ImportBeanDefinitionRegistrar接口,会调用registerBeanDefinitions注册bean定义
     AopConfigUtils.registerAutoProxyCreatorIfNecessary(registry);//注册动态代理创建者
         AopConfigUtils#registerOrEscalateApcAsRequired(InfrastructureAdvisorAutoProxyCreator.class, registry, source);
             InfrastructureAdvisorAutoProxyCreator是和上面aop中的AnnotationAwareAspectJAutoProxyCreator一样,实现了bean的后置处理器,调用的地方也是一样的.
 
 2.ProxyTransactionManagementConfiguration
+
+    这个类是个被@Configuration标注的配置类
+    类里分别用@Bean注入了BeanFactoryTransactionAttributeSourceAdvisor,TransactionAttributeSource,TransactionInterceptor 3个bean
+    BeanFactoryTransactionAttributeSourceAdvisor
+        //事务的切点和增强都是固定的,所以不用动态解析,直接设置了
+        advisor.setTransactionAttributeSource(transactionAttributeSource());//相当于设置一个pointcut,用来匹配@Transaction注解,就是本次注册3个类中的一个
+        advisor.setAdvice(transactionInterceptor());//设置一个增强,也是本次注册3个类中的一个
+    TransactionAttributeSource
+        构造器里调用了annotationParsers.add(new SpringTransactionAnnotationParser());注意SpringTransactionAnnotationParser#parseTransactionAnnotation方法
+            将@Transactional封装到attributes,然后调用parseTransactionAnnotation(attributes)
+                解析我们@Transactionl上的传播行为
+                解析我们@Transactionl上的隔离级别
+                解析我们@Transactionl上的事务超时事件
+                解析我们@Transactionl上的事务管理器的名称
+                解析对哪种异常回滚
+                对哪种异类型行回滚
+                对哪种异常不回滚
+                对哪种类型不回滚
+    TransactionInterceptor
+        这个类里有个invoke方法
+            获取代理对象的class属性
+            invokeWithinTransaction
+                获取一堆的东西,然后开始处理声明式事务, 
+                todo ......一大堆
+            
     
 3.同时有@EnableTransactionManagement和@EnableAspectJAutoProxy的时候,动态代理会怎么处理? 创建2遍吗?
+
     2个注解最终都会调用这个方法AopConfigUtils#registerOrEscalateApcAsRequired,不同的是aop注册的是AnnotationAwareAspectJAutoProxyCreator,事务注册的是InfrastructureAdvisorAutoProxyCreator
     在registerOrEscalateApcAsRequired方法中,这2个只有一个beanname即org.springframework.aop.config.internalAutoProxyCreator
     也就是说多个类前来注册,最终只会覆盖掉的只剩1个, 那么究竟谁会被保留,谁会被覆盖呢?
