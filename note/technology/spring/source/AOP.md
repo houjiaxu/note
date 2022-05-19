@@ -145,6 +145,8 @@ spring事务传播机制
 [源码分析参考blog](https://www.jianshu.com/p/45780e33b4b1)
 使用spring事务首先要配置3个对象: PlatformTransactionManager,DataSource,JdbcTemplate, 然后配置@EnableTransactionManagement开启事务
 
+###开启事务
+
 点击@EnableTransactionManagement注解,点击@Import(TransactionManagementConfigurationSelector.class)中的Selector类,这个类实现了ImportSelector接口,在ConfigurationClassPostProcessor类中会进行解析,
 会解析方法selectImports返回的数组, 然后将其中的类注册成bean定义,最后进行解析.
 
