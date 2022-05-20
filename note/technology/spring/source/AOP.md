@@ -173,7 +173,7 @@ spring事务传播机制
     TransactionAttributeSource
         构造器里调用了annotationParsers.add(new SpringTransactionAnnotationParser());
             注意SpringTransactionAnnotationParser#parseTransactionAnnotation方法,在下方会调用到
-        这个类还解析切点的方法matches,也就是匹配切点,过程如下:
+        这个类还解析切点的方法matches,也就是匹配切点,在第一次调用bean后置处理器的时候会解析切面,会调用这个方法,过程如下:
             TransactionAttributeSource#getTransactionAttribute, 实际调用的是AnnotationTransactionAttributeSource#getTransactionAttribute
                 AbstractFallbackTransactionAttributeSource#getTransactionAttribute
                     从缓存中查找事务注解
@@ -220,6 +220,19 @@ spring事务传播机制
         invocation.proceed()//调用advisor的方法,最终调用TransactionAspectSupport#invokeWithinTransaction
             处理声明式事务
                 createTransactionIfNecessary 判断是否有必要创建事务,这里主要是处理事务的传播行为,内嵌/required等等.
+                    tm.getTransaction // 获取一个事务状态,实际调用的AbstractPlatformTransactionManager.getTransaction
+                        doGetTransaction //实际调用DataSourceTransactionManager
+                            设置一个ConnectionHolder到数据源事务对象上,并将数据源事务返回
+                        isExistingTransaction  判断是否已经存在了事务(处理嵌套事务)
+                        事务存在则调用 handleExistingTransaction
+                            todo
+                        如果事务传播熟悉是required/requires_new/nested中的一个
+                            挂起当前事务suspend,即将当前事务的ConnectionHolder置为null, 把原来事务的信息保存到别的地方.
+                            然后调用newTransactionStatus()创建一个新的事务对象DefaultTransactionStatus,此处会将挂起的原事务保存到这个对象里,等新事务结束之后,会继续原事务.
+                            doBegin //开启一个新事务
+                                把我们的数据库连接包装成一个ConnectionHolder对象设置到DataSourceTransactionObject(数据源事务对象)
+                                设置隔离级别/是否自动提交事务/判断事务是否只读事务/设置事务超时时间
+                            prepareSynchronization //把当前的事务信息绑定到线程变量去
                 try{
                     invocation.proceedWithInvocation //调用钩子函数进行回调目标方法
                 }catch{
