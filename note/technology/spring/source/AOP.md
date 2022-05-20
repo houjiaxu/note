@@ -170,16 +170,8 @@ spring事务传播机制
         这个类里有个属性TransactionAttributeSourcePointcut pointcut = new TransactionAttributeSourcePointcut()
             TransactionAttributeSourcePointcut从父类中继承了一个方法getClassFilter(),在切点匹配的时候就是调用的getClassFilter().matches()方法,最终调用到了TransactionAttributeSource#matches方法,详细看下面的类
     TransactionAttributeSource
-        构造器里调用了annotationParsers.add(new SpringTransactionAnnotationParser());注意SpringTransactionAnnotationParser#parseTransactionAnnotation方法
-            将@Transactional封装到attributes,然后调用parseTransactionAnnotation(attributes)
-                解析我们@Transactionl上的传播行为
-                解析我们@Transactionl上的隔离级别
-                解析我们@Transactionl上的事务超时事件
-                解析我们@Transactionl上的事务管理器的名称
-                解析对哪种异常回滚
-                对哪种异类型行回滚
-                对哪种异常不回滚
-                对哪种类型不回滚
+        构造器里调用了annotationParsers.add(new SpringTransactionAnnotationParser());
+            注意SpringTransactionAnnotationParser#parseTransactionAnnotation方法,在下方会调用到
         这个类还解析切点的方法matches,也就是匹配切点,过程如下:
             TransactionAttributeSource#getTransactionAttribute, 实际调用的是AnnotationTransactionAttributeSource#getTransactionAttribute
                 AbstractFallbackTransactionAttributeSource#getTransactionAttribute
@@ -187,9 +179,14 @@ spring事务传播机制
                     没有则进行解析
                         computeTransactionAttribute() //解析查找我们的事务注解
                             先去目标class的方法上去找我们的事务注解 findTransactionAttribute
-                                todo
-                            去我们targetClass类(如果是个接口,则去实现类)上找事务注解 findTransactionAttribute
-                                todo
+                                AnnotationTransactionAttributeSource#determineTransactionAttribute
+                                    annotationParser.parseTransactionAnnotation //注解解析器去解析我们的方法上的注解,解析器有ejb  jta  spring的,此处使用的spring的
+                                        AnnotatedElementUtils.findMergedAnnotationAttributes // 从element对象中获取@Transactional注解
+                                            todo 这里面一堆东西,就不详细追究了.
+                                        parseTransactionAnnotation//解析出真正的事务属性对象
+                                            解析我们@Transactionl上的传播行为,上的隔离级别,超时时间,事务管理器的名称
+                                            解析对哪种异常回滚,对哪种异类型行回滚,对哪种异常不回滚,对哪种类型不回滚
+                            去我们targetClass类(如果是个接口,则去实现类)上找事务注解 findTransactionAttribute, 和方法上找注解是同样的方法.
                         将方法描述"全类名+方法名"放入事务
         大致解析逻辑概括:
             1.匹配当前bean的所有方法例如pay(),父类方法pay(),接口方法pay()
