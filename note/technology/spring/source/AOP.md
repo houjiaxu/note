@@ -232,9 +232,10 @@ spring事务传播机制
                             doBegin //开启一个新事务
                                 把我们的数据库连接包装成一个ConnectionHolder对象设置到DataSourceTransactionObject(数据源事务对象)
                                 设置隔离级别/是否自动提交事务/判断事务是否只读事务/设置事务超时时间
+                                setAutoCommit(false)// 开启事务.
                             prepareSynchronization //把当前的事务信息绑定到线程变量去
                 try{
-                    invocation.proceedWithInvocation //调用钩子函数进行回调目标方法
+                    invocation.proceedWithInvocation //调用钩子函数进行回调目标方法,即执行被我们@Transactional标注的方法
                 }catch{
                     completeTransactionAfterThrowing //抛出异常进行回滚处理,会先判断是不是我们要回滚的异常,是则回滚,不是则提交
                 }
