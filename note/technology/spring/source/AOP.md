@@ -217,7 +217,7 @@ spring事务传播机制
     
     调用到代理JdkDynamicAopProxy#invoke
         跳过前面一堆的判断,到达advised.getInterceptorsAndDynamicInterceptionAdvice,这时是有一个advisor的,就是BeanFactoryTransactionAttributeSourceAdvisor
-        invocation.proceed()//调用advisor的方法,最终调用TransactionAspectSupport#invokeWithinTransaction
+        invocation.proceed()//调用advisor的方法,实际是TransactionInterceptor#invoke(), 最终调用TransactionAspectSupport#invokeWithinTransaction
             处理声明式事务
                 createTransactionIfNecessary 判断是否有必要创建事务,这里主要是处理事务的传播行为,内嵌/required等等.
                     tm.getTransaction // 获取一个事务状态,实际调用的AbstractPlatformTransactionManager.getTransaction
