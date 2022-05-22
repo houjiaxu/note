@@ -183,7 +183,7 @@ spring事务传播机制
                                 AnnotationTransactionAttributeSource#determineTransactionAttribute
                                     annotationParser.parseTransactionAnnotation //注解解析器去解析我们的方法上的注解,解析器有ejb  jta  spring的,此处使用的spring的
                                         AnnotatedElementUtils.findMergedAnnotationAttributes // 从element对象中获取@Transactional注解
-                                            searchWithFindSemantics // 查找@Transactional注解
+                                            searchWithFindSemantics // 查找@Transactional注解,这一步在spring5.x的版本是不一样的, 新一点的版本,逻辑更清晰,老一点的版本逻辑相对没有那么清晰
                                                 匹配当前bean的所有方法例如pay(),接口方法pay(),父类方法pay()
                                                 匹配当前bean的类,接口,父类 上是否有@Transactional注解
                                         parseTransactionAnnotation//解析出真正的事务属性对象
@@ -223,12 +223,13 @@ spring事务传播机制
                     tm.getTransaction // 获取一个事务状态,实际调用的AbstractPlatformTransactionManager.getTransaction
                         doGetTransaction //实际调用DataSourceTransactionManager
                             设置一个ConnectionHolder到数据源事务对象上,并将数据源事务返回
-                        isExistingTransaction  判断是否已经存在了事务(处理嵌套事务)
+                        isExistingTransaction  判断是否已经存在了事务(处理嵌套事务,嵌套事务自己不提交,由最外层事务一起提交)
                         事务存在则调用 handleExistingTransaction
                             todo
                         如果事务传播熟悉是required/requires_new/nested中的一个
                             挂起当前事务suspend,即将当前事务的ConnectionHolder置为null, 把原来事务的信息保存到别的地方.
-                            然后调用newTransactionStatus()创建一个新的事务对象DefaultTransactionStatus,此处会将挂起的原事务保存到这个对象里,等新事务结束之后,会继续原事务.
+                            然后调用newTransactionStatus()创建一个新的事务对象DefaultTransactionStatus,此处会将挂起的原事务保存到这个对象里,
+                            等新事务结束之后,会继续原事务,然后以数据源当做key,放入了ThreadLocal中去了, 和suspend方法相对的,还有个resume方法,是将暂存的事务取出继续执行, 可以打断点看执行链路.
                             doBegin //开启一个新事务
                                 把我们的数据库连接包装成一个ConnectionHolder对象设置到DataSourceTransactionObject(数据源事务对象)
                                 设置隔离级别/是否自动提交事务/判断事务是否只读事务/设置事务超时时间
