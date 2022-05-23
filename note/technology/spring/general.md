@@ -27,7 +27,7 @@ JDBC(Java Database Connectivity)数据库连接, 用于连接数据库的
 
 DataSource 数据源,表示数据库的,一般情况有数据库的账号/密码/数据库地址/驱动类
 
-JdbcTemplate spring提供的,用来操作数据库的类.因为要操作苏巨款,所以里面有个datasource属性.
+JdbcTemplate spring提供的,用来操作数据库的类.因为要操作数据库,所以里面有个datasource属性.
 
 Spring的核心事务管理抽象是PlatformTransactionManager。它为事务管理封装了一组独立于技术的方法。无论使用Spring的编程式或声明式，事务管理器都是必须的。
 
