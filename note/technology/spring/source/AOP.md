@@ -146,7 +146,7 @@ spring事务传播机制
 使用spring事务首先要配置3个对象: PlatformTransactionManager,DataSource,JdbcTemplate, 然后配置@EnableTransactionManagement开启事务
 
 ###开启事务
-
+![Alt](img/681653284660_.pic.jpg)
 点击@EnableTransactionManagement注解,点击@Import(TransactionManagementConfigurationSelector.class)中的Selector类,这个类实现了ImportSelector接口,在ConfigurationClassPostProcessor类中会进行解析,
 会解析方法selectImports返回的数组, 然后将其中的类注册成bean定义,最后进行解析.
 
@@ -243,8 +243,13 @@ spring事务传播机制
                 commitTransactionAfterReturning //事务存在的话,提交事务
             处理编程式事务
                 此处不做记录
+注: 有道云上的笔记比这个要详细,写的也更全面.
 
+[解析Advisor](https://www.processon.com/view/link/5f4f4c195653bb0c71e5f9f4)
 
+[创建动态代理](https://www.processon.com/view/link/5f507c7407912902cf700145)
+
+[调用代理对象](https://www.processon.com/view/link/5f50d4c75653bb53ea8df95a)
 
 
 
