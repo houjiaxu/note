@@ -22,8 +22,9 @@ apache软件基金会出面研究出了日志门面: jcl jakarta common logging,
 spring4是使用的jcl + JUL,spring5使用jcl + log4j2 / slf4j 
 spring4里面如果要使用jcl + 别的日志框架,需要加一个适配包,比如使用slf4j,则需要加jcl-over-slf4j.jar,而spring5就自己适配了,不用额外加包
 
+![slf4j](img/691653288757_.pic.jpg)
 
-
+阿里的开发手册中的一条:应用中不可直接使用日志系统（log4j、logback）中的 API ，而应依赖使用日志框架 SLF4J 中的 API 。使用门面模式的日志框架，有利于维护和各个类的日志处理方式的统一。
 
 
 
