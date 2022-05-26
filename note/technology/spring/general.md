@@ -30,7 +30,9 @@ DataSource 数据源,表示数据库的,一般情况有数据库的账号/密码
 JdbcTemplate spring提供的,用来操作数据库的类.因为要操作数据库,所以里面有个datasource属性.
 
 Spring的核心事务管理抽象是PlatformTransactionManager。它为事务管理封装了一组独立于技术的方法。无论使用Spring的编程式或声明式，事务管理器都是必须的。
-
+-------------------------------随记---------------------------------------
+上下文刷新完之后,除了懒加载的一些bean没有被创建之外,其他bean都已经是完整的bean了,那么这个时候就可以appContext.getBeansOfType(SimpleUrlHandlerMapping.class);来获取所有的bean了
+也就是说可以监听上下文刷新事件. 即实现接口ApplicationListener<ContextRefreshedEvent>
 
 
 
