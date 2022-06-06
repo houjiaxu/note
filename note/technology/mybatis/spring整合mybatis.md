@@ -1,4 +1,5 @@
 整合代码:
+
     建配置类, 内容如下
     @Configuration
     @MapperScan(basePackages = {"com.heal.mapper"})
@@ -93,9 +94,23 @@
                 MapperScannerConfigurer实现了BeanDefinitionRegistryPostProcessor,BeanDefinitionRegistryPostProcessor继承自BeanFactoryPostProcessor
                 也就是说在spring的refresh()方法里会调用这个MapperScannerConfigurer#postProcessBeanDefinitionRegistry
                     new ClassPathMapperScanner(registry);//创建一个Mybatis自定义的扫描器,这里之所以自定义是因为spring的扫描器是把接口过滤掉, 不注册成bean定义的,所以此处要重写isCandidateComponent方法,让接口也能被扫描
-                    scanner.scan();//调用spring的扫描,把Mapper接口类也扫描进去,最终注册成bean定义.
-                    
-    里面注册了一个BeanFactoryPostProcessor,这里面大概是扫描了所有的mapper接口(自定义扫描器),然后利用FactoryBean创建了动态代理
+                    scanner.scan();//调用ClassPathBeanDefinitionScanner#scan,把Mapper接口类也扫描进去,最终注册成bean定义.这样在spring创建bean的时候就会生成代理,然后放入容器
+                        this.doScan(basePackages);//实际调用ClassPathMapperScanner#doScan
+                            super.doScan(basePackages);//调用父类扫描器进行扫描(实际是spring里的扫描)
+                            processBeanDefinitions(beanDefinitions);
+                                正是在这里mybaits做了一个很牛逼的功能，将spring的bean定义玩到极致(做了偷天换日的操作) 我们知道通过父类扫描出来的mapper是接口类型的
+                                比如我们com.tuling.mapper.UserMapper 他是一个接口 我们有基础的同学可能会知道我们的bean定义最终会被实例化成
+                                对象，但是我们接口是不能实例化的,所以在processBeanDefinitions 来进行偷天换日
+                                循环beanDefinitions
+                                    definition.getConstructorArgumentValues().addGenericArgumentValue(beanClassName);//通过构造器设置beanclass名称
+                                    definition.setBeanClass(this.mapperFactoryBeanClass);//将beanclass设置成MapperFactoryBean,这样一来spring在实例化的时候就会调用factorybean的getObject()方法了
+                                    definition.getPropertyValues().add("sqlSessionFactory"//为Mapper对象绑定sqlSessionFactory引用
+                                    definition.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_TYPE);
+                                        设置UserMapper<MapperFactoryBean>定义的注入模型是通过 包扫描进来的，所有我们的默认注入模型就是
+                                        AutowireCapableBeanFactory.AUTOWIRE_NO=0注入模型为0的时候,在这种情况下,若我们的MapperFactoryBean
+                                        的字段属性是永远自动注入不了值的因为字段上是没有 @AutoWired注解,所以我们需要把UserMapper<MapperFactoryBean> 的bean定义的注入模型给改成我们的 AUTOWIRE_BY_TYPE
+                                        = 1,指定这个类型就是根据类型装配的话， 第一:我们的字段上不需要写@AutoWired注解，为啥? springioc会把当前UserMapper<MapperFactoryBean>中的setXXX(入参)
+                                        都会去解析一次入参,入参的值可定会从ioc容器中获取，然后调用setXXX方法给赋值好. 
 
 mybatis plus源码也要看, 对比做了哪些扩展,怎么实现的.
 看完这个就是springboot源码
