@@ -52,8 +52,6 @@
                     this.dataSource));
                 循环mapper.xml文件调用xmlMapperBuilder.parse();进行解析
                 sqlSessionFactoryBuilder.build(targetConfiguration);//构建SqlSessionFactory对象,默认是DefaultSqlSessionFactory
-        3.明明注入的是SqlSessionFactoryBean,为什么构建时返回的是SqlSessionFactory类型呢? 
-            是在某个地方做了转换,具体在哪儿忘求了
             
 2.怎么集成Spring声明式事务?
     
@@ -102,7 +100,7 @@
                                 比如我们com.tuling.mapper.UserMapper 他是一个接口 我们有基础的同学可能会知道我们的bean定义最终会被实例化成
                                 对象，但是我们接口是不能实例化的,所以在processBeanDefinitions 来进行偷天换日
                                 循环beanDefinitions
-                                    definition.getConstructorArgumentValues().addGenericArgumentValue(beanClassName);//通过构造器设置beanclass名称
+                                    definition.getConstructorArgumentValues().addGenericArgumentValue(beanClassName);//通过构造器设置beanclass名称,这里要注意一下,接收的时候是个class,spring会根据name自动转换成class类
                                     definition.setBeanClass(this.mapperFactoryBeanClass);//将beanclass设置成MapperFactoryBean,这样一来spring在实例化的时候就会调用factorybean的getObject()方法了
                                     definition.getPropertyValues().add("sqlSessionFactory"//为Mapper对象绑定sqlSessionFactory引用
                                     definition.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_TYPE);
@@ -110,7 +108,17 @@
                                         AutowireCapableBeanFactory.AUTOWIRE_NO=0注入模型为0的时候,在这种情况下,若我们的MapperFactoryBean
                                         的字段属性是永远自动注入不了值的因为字段上是没有 @AutoWired注解,所以我们需要把UserMapper<MapperFactoryBean> 的bean定义的注入模型给改成我们的 AUTOWIRE_BY_TYPE
                                         = 1,指定这个类型就是根据类型装配的话， 第一:我们的字段上不需要写@AutoWired注解，为啥? springioc会把当前UserMapper<MapperFactoryBean>中的setXXX(入参)
-                                        都会去解析一次入参,入参的值可定会从ioc容器中获取，然后调用setXXX方法给赋值好. 
+                                        都会去解析一次入参,入参的值可定会从ioc容器中获取，然后调用setXXX方法给赋值好.
+
+    除了FactoryBean的方式之外(definition.setBeanClass(this.mapperFactoryBeanClass)),
+        还可以使用工厂方法即definition.setBeanClass(自定义一个类.class);  definition.setFactoryMethodName("自定义类中的自定义一个方法")
+
+    上面的一段代码明明注入的是SqlSessionFactory,为什么构建时返回的是SqlSessionFactoryBean类型呢(对应"整合代码"里的@Bean)?
+        definition.getPropertyValues().add("sqlSessionFactory"//为Mapper对象绑定sqlSessionFactory引用
+        definition.setAutowireMode(AbstractBeanDefinition.AUTOWIRE_BY_TYPE);
+        这个是在SqlSessionFactoryBean#getObjectType中做了个简单的转换,所以能够根据类型注入成功
+            this.sqlSessionFactory == null ? SqlSessionFactory.class : this.sqlSessionFactory.getClass();
+
 
 mybatis plus源码也要看, 对比做了哪些扩展,怎么实现的.
 看完这个就是springboot源码
