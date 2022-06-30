@@ -30,7 +30,7 @@ RestOperations:指定一组基本RESTful操作的接口。由RestTemplate实现�
     execute 这个是执行请求,上面所有的方法都会走这个,在doExecute方法里统一执行调用.
     
 
-rabbin对restTemplate的扩展:
+ribbon对restTemplate的扩展:
 
     LoadBalancerInterceptor类实现了ClientHttpRequestInterceptor接口, 根据服务名拉取所有的服务,根据算法,选择一个真正的服务地址(ip加端口)进行调用
 
