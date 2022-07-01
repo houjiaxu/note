@@ -3,6 +3,7 @@
 数据库分表:
     双写: 商家订单和用户订单,商家数据用商家id去分表，就能查到这个商家的所有订单
     使用组合键分表:比如把用户id（假如10）位，包含在订单号里(订单号: userid+雪花算法)。 分表时用userId做hash
+        例如:userid+业务线+时间戳+序列号   userid+uuid
 
 @RequestMapping(value = "/customActivity/yangshipin", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
 
