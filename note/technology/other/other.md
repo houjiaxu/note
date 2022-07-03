@@ -3,6 +3,7 @@
 数据库分表:
     双写: 商家订单和用户订单,商家数据用商家id去分表，就能查到这个商家的所有订单
     使用组合键分表:比如把用户id（假如10）位，包含在订单号里(订单号: userid+雪花算法)。 分表时用userId做hash
+        例如:userid+业务线+时间戳+序列号   userid+uuid
 
 @RequestMapping(value = "/customActivity/yangshipin", produces = MediaType.APPLICATION_JSON_UTF8_VALUE)
 
@@ -43,4 +44,6 @@ unwrap-展开-父类型转换成子类型
 controller直接注入rpc的service,理论上service是个接口,但是为什么能够进行注入呢? 原理好像是什么spi机制还是啥玩意来着,忘求了
 RequestLocal类要看一下
 spring中每个包里面的功能,特别是web包里的
+
+
 
