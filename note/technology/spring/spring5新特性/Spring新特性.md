@@ -27,6 +27,7 @@ spring4里面如果要使用jcl + 别的日志框架,需要加一个适配包,�
 阿里的开发手册中的一条:应用中不可直接使用日志系统（log4j、logback）中的 API ，而应依赖使用日志框架 SLF4J 中的 API 。使用门面模式的日志框架，有利于维护和各个类的日志处理方式的统一。
 
 
+[知识体系](https://www.pdai.tech/md/spring/spring.html)
 
 
 
