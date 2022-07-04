@@ -37,8 +37,12 @@ Nacos是如何实现自动注册的?
     总结:也就是说容器启动之后会发布WebServerInitializedEvent事件,从而触发AbstractAutoServiceRegistration#onApplicationEvent接口,该接口会调用NacosServiceRegistry#register进行自动注册服务.
     关于这里有个blog可以参考 https://blog.csdn.net/he702170585/article/details/107061542/
 
-诸葛有个源码的图,注意查百度盘里的资料
-todo ...
+Nacos核心功能源码架构图
+
+![](img/981656926422_.pic.jpg)
+
+
+
 nacos服务注册与发现,源码解析
 
 nacos注册表如何防止多节点读写并发冲突
