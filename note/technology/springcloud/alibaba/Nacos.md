@@ -62,7 +62,32 @@ nacos集群服务新增数据同步源码剖析
 
 nacos集群服务状态变动同步源码剖析
 
+    1.动态刷新client是如何感知的
+    2.多个配置,优先级是怎样的
+    3.集群节点是如何同步配置的
 
+看源码的方式:
 
+    找入口,记录核心接口,核心方法
+
+springboot加载配置: 
+
+    sping提供了PropertySource文件,然后springboot提供了propertySourceLoader接口,里面有各种实现,
+    比如PropertiespropertySourceLoader和YamlpropertySourceLoader
+
+    优先级的高低: 从高到低
+        ${spring.application.name}-${profile}.${file-extension:properties}
+        ${spring.application.name}.${file-extension:properties}
+        ${spring.application.name}
+        extensionConfigs
+        sharedConfigs
+nacos配置中心源码分析
+
+nacos的配置功能
+
+    环境配置:根据不同的环境取不同的配置
+    共享配置:不同工程的公用的配置,可以单独拉出来,配置到共享配置里, 支持dataid
+    扩展配置:支持一个应用多个dataid的配置, 比如nacos.yml  mybatis.yml
+    代码在NacosConfigProperties.java类中
 
 
