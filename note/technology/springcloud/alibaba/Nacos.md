@@ -82,6 +82,7 @@ springboot加载配置:
         extensionConfigs
         sharedConfigs
 nacos配置中心源码分析
+![Alt](img/Nacos配置中心源码分析.jpg)
 
 nacos的配置功能
 
@@ -89,5 +90,43 @@ nacos的配置功能
     共享配置:不同工程的公用的配置,可以单独拉出来,配置到共享配置里, 支持dataid
     扩展配置:支持一个应用多个dataid的配置, 比如nacos.yml  mybatis.yml
     代码在NacosConfigProperties.java类中
+
+    在springboot加载配置文件中(启动过程中调用的prepareEnvironment方法中)会调用PropertySourceLocator去加载文件,而nacos实现了PropertySourceLocator接口,
+    在NacosPropertySourceLocator#locateCollection中加载了nacos的配置,调用顺序如下: 后加载的会覆盖先加载的.
+        loadSharedConfiguration();
+        loadExtConfiguration();
+        loadApplicationConfiguration();
+            文件名(微服务名)
+            文件名.文件扩展名
+            文件名-profile.文件扩展名
+
+
+服务端的getconfig接口是直接从本地磁盘缓存文件中读取的,并非是从数据库读取的,所以如果是修改了数据库,然后调用getconfig接口,那么数据是没有变的.
+如果想让其生效, 那么服务端一定要发布ConfigDataChageEvent事件,出发本地文件和内存的更新
+
+nacos在启动时, 会将数据库的配置数据写入到磁盘文件,DumpService是将数据库中的数据,写入到磁盘
+
+
+
+
+
+配置中心看:
+    启动时怎么注册的
+    更新操作  有个notifycenter#publishEvent是发布配置变更的
+    删除操作
+    集群怎么同步的
+    扩展点,多看源码,看看扩展点都怎么使用的
+
+
+
+
+
+
+
+
+
+
+
+
 
 
