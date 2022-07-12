@@ -1,16 +1,37 @@
-[nacos是如何进行服务注册的](https://mp.weixin.qq.com/s?__biz=Mzg5MDczNDI0Nw==&mid=2247483763&idx=1&sn=78c2abadeb849203c5d50567f70c006f&chksm=cfd952bbf8aedbad23f3747c1a6ebf6f43a4a175fca057caeab1fd35b81630460e5b65103719&scene=21#wechat_redirect)
+nacos架构
+![](img/1161657591256_.pic.jpg)
+NamingService: 命名服务，是nacos提供用来实现服务注册、服务订阅、服务发现等功能的api，由NacosNamingService唯一实现，通过这个api就可以跟nacos服务端实现通信。
+ConfigService：配置服务，配置中心核心接口
 
-[nacos是如何整合springcloud](https://mp.weixin.qq.com/s?__biz=Mzg5MDczNDI0Nw==&mid=2247483806&idx=1&sn=e58729a71ce589347ce3f1f4d83c75d8&chksm=cfd95256f8aedb40eb6cad8d456feeea062a3f9d6b53cf48e63c91dd387cfe9075f4d7a0341f&scene=21#wechat_redirect)
+注册中心演变
+![](img/1171657591373_.pic.jpg)
 
-注册instance是存储在哪里?
-    
-    临时节点存储在内存中,持久化节点持久化到磁盘文件 data/naming/namespace的id
-配置数据是什么存储的?
-    
-    内置数据库derby,也可以切换成mysql
+注册中心的一般设计
 
-configservice类对应了配置,NamingService类是一个核心类,注册实例拉取实例等等,都是这个类的方法
+    增(注册->服务启动注册)
+    删(服务停止)
+    改(服务端定时检查心跳默认15s改状态,30s删除->客户端定时任务发送心跳,默认5s)
+    查(定时拉取服务-缓存本地)
+    集群节点上线
+    集群节点下线
+    集群节点同步: leader raft
 
+实例结构图
+![Alt](img/2be5716828669e3a01b26333002e271.png)
+
+    namespace: 命名空间,用来服务隔离
+    group: 同一个namespace下,不同的group之间相互隔离,比如2个服务实例都叫serviceA,一个在groupDev,另一个groupTest,那么在groupDev的服务只能订阅groupDev服务的serviceA.
+    cluster: 集群, 不同集群名称是可以互相订阅的,是互通的
+    persistentInstances: 持久化服务
+    ephemeralInstances: 临时服务
+服务领域模型
+![Alt](img/1181657597064_.pic.jpg)
+
+Nacos与其他注册中心的区别:作为注册中心对外提供了增删改查节点的http接口,可以跨语言.
+http调用和rpc调用的区别
+
+
+###nacos是如何进行服务注册的
 注册实例可以看InstanceController类
 
     register 方法是注册接口,里面写了内存注册表,
@@ -21,15 +42,28 @@ configservice类对应了配置,NamingService类是一个核心类,注册实例�
             Map<String,Cluster> clusterMap  集群,不论clustername一样不一样,集群之间是互通的,都能互相调用. 为了性能着想,最好是使用同一个集群名称,比如北京有一个集群,上海有一个集群
     beat 方法是心跳
     list 方法是拉取服务列表
-
-实例结构图
-
-![Alt](img/2be5716828669e3a01b26333002e271.png)
+    
+[nacos是如何进行服务注册的](https://mp.weixin.qq.com/s?__biz=Mzg5MDczNDI0Nw==&mid=2247483763&idx=1&sn=78c2abadeb849203c5d50567f70c006f&chksm=cfd952bbf8aedbad23f3747c1a6ebf6f43a4a175fca057caeab1fd35b81630460e5b65103719&scene=21#wechat_redirect)
 
 NacosServiceRegistry#register的方法是实际调用nameservice#registerInstance
+    
+    开启定时任务线程池,定时发送心跳http,到服务端, 当一个服务被服务端删除的时候,再次发送心跳,在服务端会找不到这个服务, 然后客户端会进行重新注册
+    发送http请求到服务端,进行注册服务(注册之前先从服务端地址中随机选择一个进行调用,调用失败的话会再次选择一个进行重试,直至注册成功)
+
+[nacos是如何整合springcloud](https://mp.weixin.qq.com/s?__biz=Mzg5MDczNDI0Nw==&mid=2247483806&idx=1&sn=e58729a71ce589347ce3f1f4d83c75d8&chksm=cfd95256f8aedb40eb6cad8d456feeea062a3f9d6b53cf48e63c91dd387cfe9075f4d7a0341f&scene=21#wechat_redirect)
 
 Nacos是如何实现自动注册的?
-
+    
+    容器启动之后会发布WebServerInitializedEvent事件,从而触发AbstractAutoServiceRegistration#onApplicationEvent接口
+        bind(event)
+            start()
+                register();
+                    serviceRegistry.register
+                        NacosServiceRegistry.register
+                            NacosNamingService#registerInstance发送http请求到服务端进行注册
+    
+    总结:容器启动,发布WebServerInitializedEvent事件(当Webserver初始化完成之后), AbstractAutoServiceRegistration监听了该事件,会在onApplicationEvent中调用注册NacosServiceRegistry#register,该接口会调用NacosServiceRegistry#register进行自动注册服务.
+    
     依赖链路: Nacos ->spring cloud Alibaba Nacos -> springcloud -> springboot -> spring
     NacosNamingService#registerInstance 是注册实例的,那么这个方法是如何被调用的呢?
         NacosServiceRegistry#register调用了NacosNamingService#registerInstance
@@ -38,23 +72,38 @@ Nacos是如何实现自动注册的?
         NacosAutoServiceRegistration是AbstractAutoServiceRegistration的实现
         到这里就有一个问题了,WebServerInitializedEvent是什么时候被发布的呢? 在ServletWebServerApplicationContext中,tomcat启动之后会调用ServletWebServerApplicationContext#finishRefresh(),
             里面调用了publishEvent(new ServletWebServerInitializedEvent(webServer, this));  而ServletWebServerInitializedEvent就是WebServerInitializedEvent的子类
-    总结:也就是说容器启动之后会发布WebServerInitializedEvent事件,从而触发AbstractAutoServiceRegistration#onApplicationEvent接口,该接口会调用NacosServiceRegistry#register进行自动注册服务.
-    关于这里有个blog可以参考 https://blog.csdn.net/he702170585/article/details/107061542/
+    关于这里有个blog可以参考 https://blog.csdn.net/he702170585/article/details/107061542/    https://zhuanlan.zhihu.com/p/486073668
+    
+SpringCloud完成注册的时机
 
+    在Spring-Cloud-Common包中有一个类org.springframework.cloud.client.serviceregistry.ServiceRegistry ,
+    它是Spring Cloud提供的服务注册的标准。集成到Spring Cloud中实现服务注册的组件,都会实现该接口。在Nacos中的实现是NacoServiceRegistry。
+    SpringCloud集成Nacos的实现过程：在spring-clou-commons包的META-INF/spring.factories中包含自动装配的配置信息如下：
+        org.springframework.boot.autoconfigure.EnableAutoConfiguration=org.springframework.cloud.client.serviceregistry.AutoServiceRegistrationAutoConfiguration
+        而AutoServiceRegistrationAutoConfiguration就是服务注册相关的配置类,里面注入了一个AutoServiceRegistration实例,AbstractAutoServiceRegistration抽象类实现了该接口,
+        并且NacosAutoServiceRegistration继承了AbstractAutoServiceRegistration。AbstractAutoServiceRegistration又实现了EventListener,监听WebServerInitializedEvent事件(当Webserver初始化完成之后)
+
+注册instance是存储在哪里?
+    
+    临时节点存储在内存中,持久化节点持久化到磁盘文件 data/naming/namespace的id
+配置数据是什么存储的?
+    
+    内置数据库derby,也可以切换成mysql
+    
 Nacos核心功能源码架构图
 
 ![Alt](img/981656926422_.pic.jpg)
 
 
-nacos服务注册与发现,源码解析
-
 nacos注册表如何防止多节点读写并发冲突
 
 nacos高并发支撑异步任务与内存队列剖析
 
-nacos心跳机制与服务健康检查源码剖析
-
 nacos服务变动事件发布源码剖析
+
+    nacos在启动时, 会将数据库的配置数据写入到磁盘文件,DumpService是将数据库中的数据,写入到磁盘
+    服务端的getconfig接口是直接从本地磁盘缓存文件中读取的,并非是从数据库读取的,所以如果是修改了数据库,然后调用getconfig接口,那么数据是没有变的.
+    如果想让其生效, 那么服务端一定要发布ConfigDataChageEvent事件,出发本地文件和内存的更新
 
 nacos服务下线源码深度剖析
 
@@ -70,24 +119,22 @@ nacos集群服务状态变动同步源码剖析
     2.多个配置,优先级是怎样的
     3.集群节点是如何同步配置的
 
-看源码的方式:
+看源码的方式: 找入口,记录核心接口,核心方法
 
-    找入口,记录核心接口,核心方法
 
-springboot加载配置: 
+nacos配置中心源码分析
+![Alt](img/Nacos配置中心源码分析.jpg)
+
+springboot加载配置的顺序: 
 
     sping提供了PropertySource文件,然后springboot提供了propertySourceLoader接口,里面有各种实现,
     比如PropertiespropertySourceLoader和YamlpropertySourceLoader
-
     优先级的高低: 从高到低
         ${spring.application.name}-${profile}.${file-extension:properties}
         ${spring.application.name}.${file-extension:properties}
         ${spring.application.name}
         extensionConfigs
         sharedConfigs
-nacos配置中心源码分析
-![Alt](img/Nacos配置中心源码分析.jpg)
-
 nacos的配置功能
 
     环境配置:根据不同的环境取不同的配置
@@ -104,16 +151,6 @@ nacos的配置功能
             文件名.文件扩展名
             文件名-profile.文件扩展名
 
-
-服务端的getconfig接口是直接从本地磁盘缓存文件中读取的,并非是从数据库读取的,所以如果是修改了数据库,然后调用getconfig接口,那么数据是没有变的.
-如果想让其生效, 那么服务端一定要发布ConfigDataChageEvent事件,出发本地文件和内存的更新
-
-nacos在启动时, 会将数据库的配置数据写入到磁盘文件,DumpService是将数据库中的数据,写入到磁盘
-
-
-
-
-
 配置中心看:
     启动时怎么注册的
     更新操作  有个notifycenter#publishEvent是发布配置变更的
@@ -122,8 +159,9 @@ nacos在启动时, 会将数据库的配置数据写入到磁盘文件,DumpServi
     扩展点,多看源码,看看扩展点都怎么使用的
 
 
+其他参考blog
 
-
+[nacos2.0,性能提高10倍](https://www.cnblogs.com/whgk/p/14616247.html)
 
 
 
