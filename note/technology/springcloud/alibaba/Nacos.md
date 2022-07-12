@@ -82,7 +82,12 @@ SpringCloud完成注册的时机
         org.springframework.boot.autoconfigure.EnableAutoConfiguration=org.springframework.cloud.client.serviceregistry.AutoServiceRegistrationAutoConfiguration
         而AutoServiceRegistrationAutoConfiguration就是服务注册相关的配置类,里面注入了一个AutoServiceRegistration实例,AbstractAutoServiceRegistration抽象类实现了该接口,
         并且NacosAutoServiceRegistration继承了AbstractAutoServiceRegistration。AbstractAutoServiceRegistration又实现了EventListener,监听WebServerInitializedEvent事件(当Webserver初始化完成之后)
+springcloud服务自动注册的三大组件
 
+    ServiceRegistry：服务注册接口，通过这个api直接可以向服务注册中心注册
+    Registration：服务实例的数据的封装，提供获取包括ip、端口之类的服务基本信息的方法
+    AbstractAutoServiceRegistration：自动注册类，这个类监听了WebServerInitializedEvent事件，容器启动的时候，会发布这个事件，然后触发自动注册
+    
 注册instance是存储在哪里?
     
     临时节点存储在内存中,持久化节点持久化到磁盘文件 data/naming/namespace的id
@@ -164,10 +169,23 @@ nacos的配置功能
 [nacos2.0,性能提高10倍](https://www.cnblogs.com/whgk/p/14616247.html)
 
 
+nacos整合ribbon实现:ribbon是负载均衡的组件，负载均衡，得有服务列表，而nocos刚好提供的有查询服务列表的api,通过nacos提供的api，就可以从nacos服务端拉取服务注册表，那么nacos是如何整合ribbon的呢？
 
+    ribbon提供了一个接口ServerList，ribbon会通过这个接口获取服务数据，里面有两个获取服务实例的方法,nacos就是通过实现这个接口来实现整合nacos的。
+    在Nacos中NacosServerList<NacosServer>实现了ServerList<Server>接口, 实现其实很简单，就是通过nacos提供的api NamingService来实现获取服务实例，然后转换成ribbon认识的NacosServer。
+    然后注入一个ServerList对象就可以了,代码是在NacosRibbonClientConfiguration中
+![NacosRibbonClientConfiguration](img/1191657611037_.pic.jpg)
 
+nacos整合ribbon实现的个人思考
 
-
+    其实ribbon在整合springcloud的实现在获取服务数据的整合方式我其实是持保留意见的。因为ribbon并没有实现通过springcloud提供的api来获取服务列表，
+    而是需要第三方注册中心来主动适配ribbon，这就使得springcloud失去了约束的意义。就类似mybatis一样，mybatis依靠jdbc，但是mybatis根本不关心哪
+    个数据库实现的jdbc。其实ribbon完全可以通过springcloud的api（DiscoveryClient）来实现从获取列表，这样注册中心主要去适配这个接口，而不需要直
+    接适配ribbon。
+    
+    DiscoveryClient其实就是springcloud提供的一个接口，用来获取服务实例的，需要各自注册中心实现，nacos的实现是NacosDiscoveryClient，实现也跟
+    上面整合ribbon的差不多。
+        
 
 
 
