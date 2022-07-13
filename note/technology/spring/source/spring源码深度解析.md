@@ -120,8 +120,80 @@ spring动态代理调用的地方有2种情况:
 ##零散知识点
 ConfigReader: 用于读取及验证配置文件
 
-
-
+ClassPathScanningCandidateComponentProvider
+    
+    是Spring提供的工具，可以按自定义的类型，查找classpath下符合要求的class文件。可参考 https://blog.csdn.net/qq_16504067/article/details/120201048
+    可以帮助我们从包路径中获取到所需的 BeanDefinition 集合，然后动态注册 BeanDefinition 到 BeanDefinitionRegistry，到达在容器中动态生成 Bean 的目的
+    该类有一些重要的变量
+        includeFilters：过滤器列表。过滤后的类被认为是候选组件
+        excludeFilters：过滤器列表。排除在候选组件之外
+    主要对外接口
+        findCandidateComponents ：扫描指定的包路径，获取相应的BeanDefinition。扫描后的类可以通过过滤器进行排除
+        isCandidateComponent(AnnotatedBeanDefinition beanDefinition)：判断通过filter筛选后的class是否是候选组件，默认实现是一个具体类。这是一个 
+            protected 的方法，可以通过子类重写它。有些框架只需要扫描接口，并注册FactoryBean到bd，然后通过动态代理实现该接口得到目标bean，比如feign。
+    使用方式:
+        public class MapperRegistrar implements ImportBeanDefinitionRegistrar, EnvironmentAware {
+            private Environment environment;
+            @Override
+            public void registerBeanDefinitions(AnnotationMetadata importingClassMetadata, BeanDefinitionRegistry registry) {
+                //聚合扫描的路径
+                Set<String> basePackages = getBasePackages(importingClassMetadata);
+                //获取扫描器
+                ClassPathScanningCandidateComponentProvider scanner = getScanner();
+                //扫描并注册bd
+                for (String basePackage : basePackages) {
+                    Set<BeanDefinition> candidateComponents = scanner.findCandidateComponents(basePackage);
+                    for (BeanDefinition beanDefinition : candidateComponents) {
+                        //注册BD
+                        String beanClassName = beanDefinition.getBeanClassName();
+                        registry.registerBeanDefinition(beanClassName, beanDefinition);
+                    }
+                }
+            }
+         
+            private ClassPathScanningCandidateComponentProvider getScanner() {
+                //不使用默认的过滤器
+                ClassPathScanningCandidateComponentProvider scanner = new ClassPathScanningCandidateComponentProvider(false, environment);
+                scanner.addIncludeFilter(new TypeFilter() {
+                    @Override
+                    public boolean match(MetadataReader metadataReader, MetadataReaderFactory metadataReaderFactory) throws IOException {
+                        //继承BaseMapper接口，并且是具体类
+                        AnnotationMetadata metadata = metadataReader.getAnnotationMetadata();
+                        String[] interfaceNames = metadata.getInterfaceNames();
+                        return isImplement(interfaceNames, BaseMapper.class) && metadata.isConcrete()
+                                && !metadata.isInterface() && !metadata.isAbstract() && !metadata.isAnnotation();
+                    }
+                    private boolean isImplement(String[] interfaceNames, Class<BaseMapper> targetInterface) {
+                        if (interfaceNames != null && targetInterface != null) {
+                            return Arrays.asList(interfaceNames).contains(targetInterface.getCanonicalName());
+                        }
+                        return false;
+                    }
+                });
+                return scanner;
+            }
+            /** 获取扫描组件的包路径 */
+            protected Set<String> getBasePackages(AnnotationMetadata importingClassMetadata) {
+                Map<String, Object> attributes = importingClassMetadata.getAnnotationAttributes(MapperScan.class.getCanonicalName());
+                Set<String> basePackages = new HashSet<>();
+                for (String pkg : (String[]) attributes.get("basePackages")) {
+                    if (StringUtils.hasText(pkg)) {
+                        basePackages.add(pkg);
+                    }
+                }
+                for (Class<?> clazz : (Class<?>[]) attributes.get("basePackageClasses")) {
+                    basePackages.add(ClassUtils.getPackageName(clazz));
+                }
+                if (basePackages.isEmpty()) {
+                    basePackages.add( ClassUtils.getPackageName(importingClassMetadata.getClassName()));
+                }
+                return basePackages;
+            }
+            @Override
+            public void setEnvironment(Environment environment) {
+                this.environment = environment;
+            }
+        }
 
 
 
