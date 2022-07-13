@@ -109,6 +109,36 @@ Feign客户端接口动态代理生成源码剖析
                             和Target，获取到一个InvocationHandler，之后通过jdk的动态代理，生成一个代理对象，然后返回回去。InvocationHandler默认是ReflectiveFeign.FeignInvocationHandler
 ![](img/1251657704995_.pic.jpg)
 
+Feign动态代理调用实现rpc流程分析
+
+    Feign客户端接口的动态代理生成是基于JDK的动态代理来实现的，那么在所有的方法调用的时候最终都会走InvocationHandler接口的实现，默认就是ReflectiveFeign.FeignInvocationHandler，那就看FeignInvocationHandler是如何实现rpc调用的。
+    FeignInvocationHandler#invoke
+        dispatch.get(method).invoke(args);//dispatch获取要调用的方法对应的MethodHandler，然后调用MethodHandler的invoke方法。
+            最终rpc的调用都是基于这个MethodHandler来实现的，每个方法都有对应MethodHandler来实现rpc调用
+            MethodHandler#invoke MethodHandler是个接口，有两个实现类，一个是DefaultMethodHandler，这个是处理接口中的默认方法的，另一个是SynchronousMethodHandler，这个是实现rpc调用的方法。
+                此处实际调用SynchronousMethodHandler#invoke
+                    RequestTemplate template = buildTemplateFromArgs.create(argv);//构建请求信息
+                    Options options = findOptions(argv); Options主要是封装了发送请求是连接超时时间和读超时时间的配置,此处先从参数里面找有没有Options，没有就返回构造SynchronousMethodHandler的入参时的Options
+                    Retryer retryer = this.retryer.clone();//重试的组件，是可以实现重试的，一般不设置。
+                    executeAndDecode(template, options)
+                        Request request = targetRequest(template);
+                            这个方法会遍历所有的拦截器RequestInterceptor，这是feign的一个扩展点，也就说再发送请求前，你仍然还有机会对请求的内容进行调整，比如说加个请求头，这也是很常见的一种方式，在微服务之间鉴权的时候使用。
+                            RequestInterceptor是在构建Feign.Builder的时候传进来的，Feign.Builder的组件都是通过ioc容器获取的，组件又是通过配置类来的，所以你需要的话就可以在配置类中声明RequestInterceptor对象。配置类有
+                            不同的优先级，按照自己的需求，可以在其中一个优先级使用，不过一般这种通用的东西，不是某个微服务特有的功能，一般选择在springboot启动中的容器中配置。
+                        client.execute(request, options);//调用请求,处理响应结果
+    总结:其实就是通过每个方法对应的MethodHandler来实现的，MethodHandler主要就是拼接各种参数，组装成一个请求，随后交由Client接口的实现去发送请求。
+
+LoadBalancerFeignClient
+
+
+
+
+
+
+
+
+
+
 多次触发ContextRefreshedEvent事件的坑
 
     不知道大家有么有遇到过这个坑，就是在spring cloud环境中，监听类似ContextRefreshedEvent这种事件的时候，这个事件会无缘无故地触发很多次，
