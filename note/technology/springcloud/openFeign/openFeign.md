@@ -1,3 +1,5 @@
+[Feign核心源码解析](https://developer.aliyun.com/article/856311?spm=a2c6h.12873639.article-detail.41.40141410Yfdigw)
+
 [OpenFeign之FeignClient动态代理生成原理](https://mp.weixin.qq.com/s?__biz=Mzg5MDczNDI0Nw==&mid=2247484185&idx=1&sn=efb3a1f459be9970126269234ff813e7&chksm=cfd950d1f8aed9c7c9ec6bc8b00c376d9777aa6d6aa2b93ccf6a4b4376adbed8c4f3e1e3754b&scene=21#wechat_redirect)
 
 [OpenFeign原来是这么基于Ribbon来实现负载均衡的](https://mp.weixin.qq.com/s?__biz=Mzg5MDczNDI0Nw==&mid=2247484211&idx=1&sn=13b1cb0832bfae9a6d2369193700fd19&chksm=cfd950fbf8aed9ed473a0e170480770c311f1b637607332a0df15f32e2e9a446f8bc97f0b295&scene=21#wechat_redirect)
@@ -172,29 +174,38 @@ Feign跟ribbon整合的配置类
 LoadBalancerFeignClient的实现。
     
     LoadBalancerFeignClient implements Client
-        
+    动态代理调用的那里我们得出一个结论，那就是最后会调用Client接口的execute方法的实现
+    LoadBalancerFeignClient#execute//其主要作用就是从请求的URL中拿到了clientName,也就是服务名,然后调用执行
+        FeignLoadBalancer.RibbonRequest ribbonRequest = new FeignLoadBalancer.RibbonRequest(this.delegate, request, uriWithoutHost);//拿到服务名
+            为什么可以拿到服务名？其实很简单，OpenFeign构建动态代理的时候，传入了一个HardCodedTarget，当时说在构建HardCodedTarget的时候传入了一个url，那个url当时说了其实就是http://服务名，
+                所以到这里，虽然有具体的请求接口的路径，但是还是类似 http://服务名/api/sayHello这种，所以可以通过路径拿到你锁请求的服务名。
+        lbClient(clientName).executeWithLoadBalancer
+            lbClient实际调用调用CachingSpringLoadBalancerFactory的create
+                先根据服务名从缓存中获取一个FeignLoadBalancer，获取不到就创建一个。创建的过程就是从每个服务对应的容器中获取到IClientConfig和ILoadBalancer。
+                默认就是创建不带spring重试功能的FeignLoadBalancer，放入缓存，最后返回这个FeignLoadBalancer。所以第一次来肯定没有，需要构建，也就是最终一定会返回FeignLoadBalancer，所以我们
+                    通过lbClient方法拿到的是FeignLoadBalancer。从这里可以看出CachingSpringLoadBalancerFactory是构建FeignLoadBalancer的工厂类，只不过先从缓存中查找，找不到再创建FeignLoadBalancer。
+            executeWithLoadBalancer//将服务名替换成ip+端口,然后执行,接收到Response之后直接返回.
+                FeignLoadBalancer#execute
+                    Response response = request.client().execute(request.toRequest(), options);
+                        request.client()就会拿到构建LoadBalancerFeignClient传入的那个Client的实现，这个Client的实现是具体发送请求的实现，默认的就是Client.Default类（不是默认就有可能是基于HttpClient或者是OkHttp的实现）。
+                    new RibbonResponse(request.getUri(), response);
+                        执行后将这个Response 封装成一个RibbonResponse返回，最后就返回给MethodHandler，然后解析响应，封装成方法的返回值返回给调用者。
+                        
+    
+    FeignLoadBalancer是个啥呢？
+        FeignLoadBalancer extends AbstractLoadBalancerAwareClient<FeignLoadBalancer.RibbonRequest, FeignLoadBalancer.RibbonResponse> 
+        AbstractLoadBalancerAwareClient类主要作用是将服务名替换成ip和端口,然后交由子类实现的exceut方法来发送http请求。
+    
+    总结: Feign用来整合Ribbon的入口LoadBalancerFeignClient,FeignLoadBalancer才是真正实现选择负载均衡，发送http请求的组件，因为他继承了AbstractLoadBalancerAwareClient。
+
+OpenFeign、Ribbon以及注册中心协同工作原理
+    
+    OpenFeign在进行rpc调用的时候，由于不知道服务具体在哪台机器上，所以需要Ribbon这个负载均衡组件从服务所在的机器列表中选择一个，Ribbon中服务所在的机器列表是从注册中心拉取的，
+        Ribbon提供了一个ServerList接口，注册中心实现之后，Ribbon就可以获取到服务所在的机器列表，这就是这三个组件最基本的原理
+![OpenFeign、Ribbon以及注册中心之间的协同关系](img/1271657764690_.pic.jpg)
 
 
-Feign用来整合Ribbon的入口LoadBalancerFeignClient
 
-    这个组件的实现是要依赖负载均衡.
-
-
-
-
-
-
-
-
-
-
-
-多次触发ContextRefreshedEvent事件的坑
-
-    不知道大家有么有遇到过这个坑，就是在spring cloud环境中，监听类似ContextRefreshedEvent这种事件的时候，这个事件会无缘无故地触发很多次，
-        其实就是这个原因就在这，因为spring的事件是有传播机制的，每个客户端对应的容器都要进行refresh，refresh完就会发这个事件，然后这个事件
-        就会传给parent容器，也就是springboot启动的容器，就会再次触发，所以如果客户端很多，那么就会触发很多次。解决办法就是进行唯一性校验，
-        只能启动一次就行了。
 
 springcloud预留的供实现的扩展接口有哪些?
 
