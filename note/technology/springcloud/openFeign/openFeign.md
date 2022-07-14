@@ -207,9 +207,7 @@ OpenFeign、Ribbon以及注册中心协同工作原理
 
 
 
-springcloud预留的供实现的扩展接口有哪些?
 
-    比如注册中心的等
 
 
 
