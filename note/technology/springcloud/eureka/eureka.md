@@ -46,7 +46,13 @@ Server端源码分析
         public EurekaServerContext eurekaServerContext(ServerCodecs serverCodecs, PeerAwareInstanceRegistry registry, PeerEurekaNodes peerEurekaNodes) {
             return new DefaultEurekaServerContext(this.eurekaServerConfig, serverCodecs, registry, peerEurekaNodes, this.applicationInfoManager);
         }
-        
+            DefaultEurekaServerContext类中有个initialize()是被@PostConstruct修饰的,也就是说此步创建的时候会调用initialize()这个方法
+            DefaultEurekaServerContext#initialize
+                // 启动一个线程，读取其他集群节点的信息，后面后续复制
+                peerEurekaNodes.start();//启动一个只拥有一个线程的线程池,首次进来更新集群节点信息然后启动了一个定时线程，每60秒更新一次，也就是说后续可以根据配置动态的修改节点配置。（原生的spring cloud config支持）
+                    updatePeerEurekaNodes(resolvePeerUrls());// 首次进来，更新集群节点信息
+                registry.init(peerEurekaNodes);
+                
         @Bean//该类是spring‐cloud和原生eureka的胶水代码，用来启动EurekaServer 后面该类会在EurekaServerInitializerConfiguration被调用，进行eureka启动
         public EurekaServerBootstrap eurekaServerBootstrap(PeerAwareInstanceRegistry registry, EurekaServerContext serverContext) {
             return new EurekaServerBootstrap(this.applicationInfoManager, this.eurekaClientConfig, this.eurekaServerConfig, registry, serverContext);
@@ -62,7 +68,85 @@ Server端源码分析
         }
     }
     
-    @Import(EurekaServerInitializerConfiguration.class)
+    上面的配置类有个@Import(EurekaServerInitializerConfiguration.class)
+    EurekaServerInitializerConfiguration#start里启动了一个线程,线程里做了如下事件
+        // 初始化EurekaServer，同时启动Eureka Server
+        eurekaServerBootstrap.contextInitialized(EurekaServerInitializerConfiguration.this.servletContext);
+            initEurekaEnvironment();//初始化EurekaServer运行环境
+            initEurekaServerContext();//初始化EurekaServer上下文
+                EurekaServerContextHolder.initialize(this.serverContext);
+                int registryCount = this.registry.syncUp();// 从相邻的eureka节点复制注册表
+                    register(instance, instance.getLeaseInfo().getDurationInSecs(), true);//将其他节点的实例注册到本节点
+                this.registry.openForTraffic(this.applicationInfoManager, registryCount);
+                    默认每30秒发送心跳，1分钟就是2次,修改eureka状态为up,同时，这里面会开启一个定时任务，用于清理60秒没有心跳的客户端。自动下线
+        
+        publish(new EurekaRegistryAvailableEvent(getEurekaServerConfig()));// 发布EurekaServer的注册事件
+        publish(new EurekaServerStartedEvent(getEurekaServerConfig()));
+            发送Eureka Start 事件 ， 其他还有各种事件，我们可以监听这种时间，然后做一些特定的业务需求
+         
+Client端源码分析
+    
+    @Inject
+    DiscoveryClient(ApplicationInfoManager applicationInfoManager, EurekaClientConfig config, 
+        AbstractDiscoveryClientOptionalArgs args, Provider<BackupRegistry> backupRegistryProvider) {
+        try {
+            scheduler = Executors.newScheduledThreadPool(2,new ThreadFactoryBuilder().setNameFormat("DiscoveryClient‐%d").setDaemon(true).build());
+        
+            heartbeatExecutor = new ThreadPoolExecutor(1, clientConfig.getHeartbeatExecutorThreadPoolSize(), 0, TimeUnit.SECONDS,new SynchronousQueue<Runnable>(),
+                new ThreadFactoryBuilder().setNameFormat("DiscoveryClient‐HeartbeatExecutor‐%d").setDaemon(true).build()); // use direct handoff
+            
+            cacheRefreshExecutor = new ThreadPoolExecutor(1, clientConfig.getCacheRefreshExecutorThreadPoolSize(), 0, TimeUnit.SECONDS,
+                new SynchronousQueue<Runnable>(),new ThreadFactoryBuilder().setNameFormat("DiscoveryClient‐CacheRefreshExecutor‐%d").setDaemon(true).build()); // use direct handoff
+            
+            eurekaTransport = new EurekaTransport();
+            scheduleServerEndpointTask(eurekaTransport, args);
+        
+            AzToRegionMapper azToRegionMapper;
+            if (clientConfig.shouldUseDnsForFetchingServiceUrls()) {
+                azToRegionMapper = new DNSBasedAzToRegionMapper(clientConfig);
+            } else {
+                azToRegionMapper = new PropertyBasedAzToRegionMapper(clientConfig);
+            }
+            if (null != remoteRegionsToFetch.get()) {
+                azToRegionMapper.setRegionsToFetch(remoteRegionsToFetch.get().split(","));
+            }
+            instanceRegionChecker = new InstanceRegionChecker(azToRegionMapper, clientConfig.getRegion());
+        } catch (Throwable e) {
+            throw new RuntimeException("Failed to initialize DiscoveryClient!", e);
+        }
+        
+        if (clientConfig.shouldFetchRegistry() && !fetchRegistry(false)) {
+            fetchRegistryFromBackup();
+        }
+        
+        // call and execute the pre registration handler before all background tasks (inc registration) started
+        if (this.preRegistrationHandler != null) {
+            this.preRegistrationHandler.beforeRegistration();
+        }
+        
+        if (clientConfig.shouldRegisterWithEureka() && clientConfig.shouldEnforceRegistrationAtInit()) {
+            if (!register() ) {
+                throw new IllegalStateException("Registration error at startup. Invalid server response.");
+            }
+        }
+        
+        //最核心代码
+        // finally, init the schedule tasks (e.g. cluster resolvers, heartbeat, instanceInfo replicator,fetch
+        initScheduledTasks();
+        
+        Monitors.registerObject(this);
+        
+        // This is a bit of hack to allow for existing code using DiscoveryManager.getInstance()
+        // to work with DI'd DiscoveryClient
+        DiscoveryManager.getInstance().setDiscoveryClient(this);
+        DiscoveryManager.getInstance().setEurekaClientConfig(config);
+        
+        initTimestampMs = System.currentTimeMillis();
+    }
+    
+    https://blog.csdn.net/qq_34680763/article/details/123736997
+    
+    
 
 
 
