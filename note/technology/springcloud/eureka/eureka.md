@@ -3,6 +3,19 @@
 
 ![架构](img/1291657767207_.pic.jpg)
 
+![流程图](img/1431657871737_.pic.jpg)
+
+![流程图](img/1441657871745_.pic.jpg)
+
+![流程图](img/1451657871758_.pic.jpg)
+
+几种注册中心的区别
+
+    zookeeper CP架构
+    eureka  AP架构
+    nacos 两种都支持, 但是推荐AP架构
+    Consistency(一致性)、Availability(可用性)、Partition Tolerance(分区容错性)
+
 Eureka核心功能点
     
     服务注册(register):存储在一个双层的Map中
@@ -85,88 +98,120 @@ Server端源码分析
             发送Eureka Start 事件 ， 其他还有各种事件，我们可以监听这种时间，然后做一些特定的业务需求
          
 Client端源码分析
-    
-    @Inject
-    DiscoveryClient(ApplicationInfoManager applicationInfoManager, EurekaClientConfig config, 
-        AbstractDiscoveryClientOptionalArgs args, Provider<BackupRegistry> backupRegistryProvider) {
-        try {
-            scheduler = Executors.newScheduledThreadPool(2,new ThreadFactoryBuilder().setNameFormat("DiscoveryClient‐%d").setDaemon(true).build());
-        
-            heartbeatExecutor = new ThreadPoolExecutor(1, clientConfig.getHeartbeatExecutorThreadPoolSize(), 0, TimeUnit.SECONDS,new SynchronousQueue<Runnable>(),
-                new ThreadFactoryBuilder().setNameFormat("DiscoveryClient‐HeartbeatExecutor‐%d").setDaemon(true).build()); // use direct handoff
-            
-            cacheRefreshExecutor = new ThreadPoolExecutor(1, clientConfig.getCacheRefreshExecutorThreadPoolSize(), 0, TimeUnit.SECONDS,
-                new SynchronousQueue<Runnable>(),new ThreadFactoryBuilder().setNameFormat("DiscoveryClient‐CacheRefreshExecutor‐%d").setDaemon(true).build()); // use direct handoff
-            
-            eurekaTransport = new EurekaTransport();
-            scheduleServerEndpointTask(eurekaTransport, args);
-        
-            AzToRegionMapper azToRegionMapper;
-            if (clientConfig.shouldUseDnsForFetchingServiceUrls()) {
-                azToRegionMapper = new DNSBasedAzToRegionMapper(clientConfig);
-            } else {
-                azToRegionMapper = new PropertyBasedAzToRegionMapper(clientConfig);
-            }
-            if (null != remoteRegionsToFetch.get()) {
-                azToRegionMapper.setRegionsToFetch(remoteRegionsToFetch.get().split(","));
-            }
-            instanceRegionChecker = new InstanceRegionChecker(azToRegionMapper, clientConfig.getRegion());
-        } catch (Throwable e) {
-            throw new RuntimeException("Failed to initialize DiscoveryClient!", e);
-        }
-        
-        if (clientConfig.shouldFetchRegistry() && !fetchRegistry(false)) {
-            fetchRegistryFromBackup();
-        }
-        
-        // call and execute the pre registration handler before all background tasks (inc registration) started
-        if (this.preRegistrationHandler != null) {
-            this.preRegistrationHandler.beforeRegistration();
-        }
-        
-        if (clientConfig.shouldRegisterWithEureka() && clientConfig.shouldEnforceRegistrationAtInit()) {
-            if (!register() ) {
-                throw new IllegalStateException("Registration error at startup. Invalid server response.");
-            }
-        }
-        
-        //最核心代码
-        initScheduledTasks();
-            CacheRefreshThread定时更新服务注册列表,定时拉取
-                会判断是否全量更新,下面任一个满足都会全量更新：
-                    1. 是否禁用增量更新；2. 是否对某个region特别关注；3. 外部调用时是否通过入参指定全量更新；4. 本地还未缓存有效的服务列表信息；
-                    getAndStoreFullRegistry();//全量更新
-                    getAndUpdateDelta(applications);//增量更新
-                    onCacheRefreshed();//将本地缓存更新的事件广播给所有已注册的监听器，注意该方法已被CloudEurekaClient类重写
-                    updateInstanceRemoteStatus();
-                        检查刚刚更新的缓存中，有来自Eureka server的服务列表，其中包含了当前应用的状态，当前实例的成员变量lastRemoteInstanceStatus，
-                        记录的是最后一次更新的当前应用状态，上述两种状态在updateInstanceRemoteStatus方法中作比较 ，如果不一致，就更新lastRemoteInstanceStatus，并且广播对应的事件
-            HeartbeatThread,心跳,续约
-            instanceInfoReplicator.start 服务注册
-        
-        Monitors.registerObject(this);
-        
-        DiscoveryManager.getInstance().setDiscoveryClient(this);
-        DiscoveryManager.getInstance().setEurekaClientConfig(config);
-        
-        initTimestampMs = System.currentTimeMillis();
-    }
-    
+
+    客户端一般要在应用主类中配置@EnableDiscoveryClient注解,在application.properties中用eureka.client.serviceUrl.defaultZone参数指定服务注册中心地址
+    如果是引入spring-cloud-starter-netflix-eureka-client后，Eureka Client会自动启用, 通过spring.factories自动配置引入EurekaClientAutoConfiguration,
+        然后注入CloudEurekaClient,会调父类DiscoveryClient的构造方法
+    @EnableDiscoveryClient注解
+        注释上有一行写的 Annotation to enable a DiscoveryClient implementation 此注解用来开启DiscoveryClient的实例。
+            搜索DiscoveryClient，可以发现一个类和一个接口, 看下实现类,从类说明中可以知道，该类负责向Eureka Server注册服务实例、向Eureka Server服务租约、当服务关闭，向Eureka Server取消租约、查询Eureka Server中的服务实例列表。
+            DiscoveryClient有个被@Inject标注的构造方法,里面调用了一个核心代码initScheduledTasks
+                initScheduledTasks();
+                    this.cacheRefreshTask = new TimedSupervisorTask("cacheRefresh", this.scheduler, this.cacheRefreshExecutor, renewalIntervalInSecs, TimeUnit.SECONDS, expBackOffBound, new DiscoveryClient.CacheRefreshThread());
+                    this.scheduler.schedule(this.cacheRefreshTask, (long)renewalIntervalInSecs, TimeUnit.SECONDS);
+                        CacheRefreshThread#run定时更新服务注册列表,定时拉取
+                            refreshRegistry();
+                                boolean success = this.fetchRegistry(remoteRegionsModified);
+                                    会判断是否全量更新,下面任一个满足都会全量更新：1. 是否禁用增量更新；2. 是否对某个region特别关注；3. 外部调用时是否通过入参指定全量更新；4. 本地还未缓存有效的服务列表信息；
+                                    getAndStoreFullRegistry();//全量更新
+                                        EurekaHttpResponse<Applications> httpResponse = eurekaTransport.queryClient.getApplications
+                                            Eurekaserver交互的逻辑都在getApplications里面，方法getApplications的具体实现是在EurekaHttpClientDecorator类
+                                                实际调用AbstractJerseyEurekaHttpClient#getApplications,其实就是发送restful请求,返回列表结果
+                                        apps = httpResponse.getEntity();//请求服务端获取服务列表,返回对象就是服务列表
+                                        compareAndSet//考虑到多线程同步，只有CAS成功的线程，才会把自己从Eureka server获取的数据来替换本地缓存
+                                        localRegionApps.set(this.filterAndShuffle(apps));//localRegionApps就是本地缓存，是个AtomicReference实例
+                                        总结: 获取全量数据，是通过jersey-client库的API向Eureka server发起restful请求http://localhost:8761/eureka/apps实现的，并将响应的服务列表数据放在一个成员变量中作为本地缓存
+                                    getAndUpdateDelta(applications);//增量更新
+                                         EurekaHttpResponse<Applications> httpResponse = eurekaTransport.queryClient.getDelta(remoteRegionsRef.get());
+                                         delta = httpResponse.getEntity();
+                                         getAndStoreFullRegistry();//如果增量信息为空，就直接发起一次全量更新
+                                         compareAndSet,CAS来确保请求发起到现在是线程安全的，
+                                         updateDelta(delta);用Eureka返回的增量数据和本地数据做合并操作
+                                         reconcileHashCode = getReconcileHashCode(applications);//用合并了增量数据之后的本地数据来生成一致性哈希码
+                                             Eureka server在返回增量更新数据时，也会返回服务端的一致性哈希码，理论上每次本地缓存数据经历了多次增量更新后，计算出的一致性哈希码应该是和服务端一致的，如果发现不一致，
+                                                就证明本地缓存的服务列表信息和Eureka server不一致了，需要做一次全量更新
+                                         reconcileAndLogDifference(delta, reconcileHashCode);//一致性哈希码不同，就在reconcileAndLogDifference方法中做全量更新
+                                    onCacheRefreshed();//将本地缓存更新的事件广播给所有已注册的监听器，注意该方法已被CloudEurekaClient类重写
+                                    updateInstanceRemoteStatus();
+                                        检查刚刚更新的缓存中，有来自Eureka server的服务列表，其中包含了当前应用的状态，当前实例的成员变量lastRemoteInstanceStatus，
+                                        记录的是最后一次更新的当前应用状态，上述两种状态在updateInstanceRemoteStatus方法中作比较 ，如果不一致，就更新lastRemoteInstanceStatus，并且广播对应的事件
+                    HeartbeatThread,心跳,续约
+                        heartbeatTask = new TimedSupervisorTask("heartbeat", this.scheduler, this.heartbeatExecutor, renewalIntervalInSecs, TimeUnit.SECONDS, expBackOffBound, new DiscoveryClient.HeartbeatThread());
+                        scheduler.schedule(this.heartbeatTask, (long)renewalIntervalInSecs, TimeUnit.SECONDS);
+                        HeartbeatThread实现了Runnable接口,run方法中调用了renew()方法,renew方法向服务端发送rest续约请求, 如果请求返回404,就发送注册
+                        也就是如果服务端删除了该节点,那么就重新注册
+                    instanceInfoReplicator.start 服务注册
+                        Future next = scheduler.schedule(this, initialDelayMs, TimeUnit.SECONDS);
+                            InstanceInfoReplicator#run
+                                discoveryClient.refreshInstanceInfo();//刷新实例信息
+                                discoveryClient.register();//注册
+                                    就是发送一个REST请求的方式进行的，传入的参数为InstanceInfo对象，内部保存的就是关于服务的元数据。
+                                Future next = scheduler.schedule(this, replicationIntervalSeconds, TimeUnit.SECONDS);//注册任务,定时刷新
+      
+    服务注册中心处理
+        客户端和服务端所有的交互都通过REST请求来发起的，那服务注册中心又是如何处理这些请求的呢？
+            Eureka Server对于各类REST请求的定义都位于com.netflix.eureka.resources包中，以处理服务注册为例，
+            Response addInstance(InstanceInfo info,@HeaderParam(PeerEurekaNode.HEADER_REPLICATION) String isReplication)
+                registry.register(info, "true".equals(isReplication));
+                    handleRegistration(info, this.resolveInstanceLeaseDuration(info), isReplication);
+                        publishEvent(new EurekaInstanceRegisteredEvent(this, info, leaseDuration, isReplication))
+                    super.register(info, isReplication);
+        总结: 服务注册的过程大致如下，先调用publishEvent方法，将该新服务注册的事件传播出去，再调用父类方法注册实现，将InstanceInfo中的元数据保存在一个ConcurrentHashMap对象中。
+            注册中心存储了两层Map结构，第一层key为存储的服务名称，value为InstanceInfo中的appName属性，第二层key为实例名称，value为InstanceInfo中的instanceId属性。
+                    
 源码精髓
 
     参考: https://blog.csdn.net/qq_34680763/article/details/123736997
     从整体上看，TimedSupervisorTask是固定间隔的周期性任务，一旦遇到超时就会将下一个周期的间隔时间调大，如果连续超时，那么每次间隔时间都会增大一倍，
     一直到达外部参数设定的上限为止，一旦新任务不再超时，间隔时间又会自动恢复为初始值，另外还有CAS来控制多线程同步，这些是我们看源码需要学习到的设计技巧.
    
-    
+Eureka Server服务端Jersey接口源码分析
+![](img/1371657856726_.pic.jpg)
+
+    服务端Jersey接口处理类ApplicationResource其中有一个addInstance方法就是用来接收客户端的注册请求接口
+    registry.register(info, "true".equals(isReplication));调用AbstractInstanceRegistry#register
+        ConcurrentHashMap<String, Lease<InstanceInfo>> gNewMap = new ConcurrentHashMap<String, Lease<InstanceInfo>>();//放注册信息的地方是个并发map
+        gMap = registry.putIfAbsent(registrant.getAppName(), gNewMap);//将要注册的实例放入map
+
+    服务端Jersey接口处理类ApplicationsResource其中有一个getContainers方法就是用来获取所有注册实例信息的接口
+
+源码精髓：多级缓存设计思想
+
+![多级缓存](img/1471657877529_.pic.jpg)
+
+    Eureka Server里存在三个变量（registry、readWriteCacheMap、readOnlyCacheMap）保存服务注册信息。
+        Eureka客户端向服务端注册之后，数据会立即同步到readWriteCacheMap和registry。
+        Eureka客户端想查看注册信息，每隔30秒从readOnlyCacheMap拉取。
+        readOnlyCacheMap会通过定时器每30秒从readWriteCacheMap拉取。
+        还有一个线程每隔60会将90秒都没有续约的服务剔除出去。
+        
+        ConcurrentHashMap registry	实时更新，类AbstractInstanceRegistry成员变量，UI端请求的是这里的服务注册信息
+        Guava Cache   readWriteCacheMap  实时更新，类ResponseCacheImpl成员变量，缓存时间180秒
+        ConcurrentHashMap  readOnlyCacheMap 周期更新，类ResponseCacheImpl成员变量，默认每30s从readWriteCacheMap更新，Eureka client默认从这里更新服务注册信息，可配置直接从readWriteCacheMap更新
+        
+    在拉取注册表的时候：
+        首先从ReadOnlyCacheMap里查缓存的注册表。
+        若没有，就找ReadWriteCacheMap里缓存的注册表。
+        如果还没有，就从内存中获取实际的注册表数据。
+        
+    在注册表发生变更的时候：
+        会在内存中更新变更的注册表数据，同时过期掉ReadWriteCacheMap。
+        此过程不会影响ReadOnlyCacheMap提供人家查询注册表。
+        默认每30秒Eureka Server会将ReadWriteCacheMap更新到ReadOnlyCacheMap里
+        默认每180秒Eureka Server会将ReadWriteCacheMap里是数据失效
+        下次有服务拉取注册表，又会从内存中获取最新的数据了，同时填充 各级缓存。
+
+    多级缓存机制的优点：
+        尽可能保证了内存注册表数据不会出现频繁的读写冲突问题。
+        并且进一步保证对Eureka Server的大量请求，都是快速从纯内存走，性能极高（可以稍微估计下对于一线互联网公司，内部上千个eureka client实例，每分钟对eureka上千次的访问，一天就是上千万次的访问）
 
 
 
 
+看源码彻底搞懂一些诡异的问题：
 
-
-
-
+    看完多级缓存这块源码我们可以搞清楚一个常见的问题，就是当我们eureka服务实例有注册或下线或有实例发生故障，内存注册表虽然会及时更新数据，但是客户端不一定能及时感知到，可能会过30秒才能感知到，因为客户端拉取注册表实例这里面有一个多级缓存机制
+    还有服务剔除的不是默认90秒没心跳的实例，剔除的是180秒没心跳的实例(eureka的bug导致)
 
 
 
