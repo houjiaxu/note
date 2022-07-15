@@ -131,21 +131,33 @@ Client端源码分析
         }
         
         //最核心代码
-        // finally, init the schedule tasks (e.g. cluster resolvers, heartbeat, instanceInfo replicator,fetch
         initScheduledTasks();
+            CacheRefreshThread定时更新服务注册列表,定时拉取
+                会判断是否全量更新,下面任一个满足都会全量更新：
+                    1. 是否禁用增量更新；2. 是否对某个region特别关注；3. 外部调用时是否通过入参指定全量更新；4. 本地还未缓存有效的服务列表信息；
+                    getAndStoreFullRegistry();//全量更新
+                    getAndUpdateDelta(applications);//增量更新
+                    onCacheRefreshed();//将本地缓存更新的事件广播给所有已注册的监听器，注意该方法已被CloudEurekaClient类重写
+                    updateInstanceRemoteStatus();
+                        检查刚刚更新的缓存中，有来自Eureka server的服务列表，其中包含了当前应用的状态，当前实例的成员变量lastRemoteInstanceStatus，
+                        记录的是最后一次更新的当前应用状态，上述两种状态在updateInstanceRemoteStatus方法中作比较 ，如果不一致，就更新lastRemoteInstanceStatus，并且广播对应的事件
+            HeartbeatThread,心跳,续约
+            instanceInfoReplicator.start 服务注册
         
         Monitors.registerObject(this);
         
-        // This is a bit of hack to allow for existing code using DiscoveryManager.getInstance()
-        // to work with DI'd DiscoveryClient
         DiscoveryManager.getInstance().setDiscoveryClient(this);
         DiscoveryManager.getInstance().setEurekaClientConfig(config);
         
         initTimestampMs = System.currentTimeMillis();
     }
     
-    https://blog.csdn.net/qq_34680763/article/details/123736997
-    
+源码精髓
+
+    参考: https://blog.csdn.net/qq_34680763/article/details/123736997
+    从整体上看，TimedSupervisorTask是固定间隔的周期性任务，一旦遇到超时就会将下一个周期的间隔时间调大，如果连续超时，那么每次间隔时间都会增大一倍，
+    一直到达外部参数设定的上限为止，一旦新任务不再超时，间隔时间又会自动恢复为初始值，另外还有CAS来控制多线程同步，这些是我们看源码需要学习到的设计技巧.
+   
     
 
 
