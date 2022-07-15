@@ -26,7 +26,8 @@ Eureka核心功能点
     服务下线(cancel):当Eureka Client需要关闭或重启时，会提前先发送REST请求告诉Eureka Server自己要下线了，Eureka Server在收到请求后，就会把该服务状态置为下线（DOWN），并把该下线事件传播出去。
     服务剔除(evict)：Eureka Server在启动的时候会创建一个定时任务，每隔一段60秒，从当前服务清单中把超时没有续约的服务剔除,默认90秒。
     自我保护:短时间内，统计续约失败的比例，如果达到一定阈值，则会触发自我保护的机制，在该机制下，Eureka Server不会剔除任何的微服务，等到正常后，再退出自我保护机制。自我保护开关(eureka.server.enableself-preservation: false)
-    
+    Eureka Server多节点之间的数据复制同步
+
 Server端源码分析
 
     @Configuration
@@ -35,13 +36,13 @@ Server端源码分析
     @EnableConfigurationProperties({ EurekaDashboardProperties.class, InstanceRegistryProperties.class })
     @PropertySource("classpath:/eureka/server.properties")
     public class EurekaServerAutoConfiguration extends WebMvcConfigurerAdapter {
-        @Bean// 加载EurekaController, spring‐cloud 提供了一些额外的接口，用来获取eurekaServer的信息
+        @Bean// 加载EurekaController, spring‐cloud 提供了一些额外的接口，用来获取eurekaServer的信息,是Eureka管理页面的Controller
         @ConditionalOnProperty(prefix = "eureka.dashboard", name = "enabled", matchIfMissing = true)
         public EurekaController eurekaController() {
             return new EurekaController(this.applicationInfoManager);
         }
     
-        @Bean//初始化集群注册表
+        @Bean//初始化集群注册表,处理Eureka Client的register、renew、cancel等请求
         public PeerAwareInstanceRegistry peerAwareInstanceRegistry(ServerCodecs serverCodecs) {
             this.eurekaClient.getApplications(); // force initialization
             return new InstanceRegistry(this.eurekaServerConfig, this.eurekaClientConfig, serverCodecs, this.eurekaClient,
@@ -49,7 +50,7 @@ Server端源码分析
                 this.instanceRegistryProperties.getDefaultOpenForTrafficCount());
         }
         
-        @Bean// 配置服务节点信息，这里的作用主要是为了配置Eureka的peer节点，也就是说当有收到有节点注册上来的时候，需要通知给那些服务节点，（互为一个集群）
+        @Bean// 配置服务节点信息，主要是为了配置Eureka的peer节点，也就是说当有收到有节点注册上来的时候，需要通知给那些服务节点，处理Eureka Server多节点同步（互为一个集群）
         @ConditionalOnMissingBean
         public PeerEurekaNodes peerEurekaNodes(PeerAwareInstanceRegistry registry, ServerCodecs serverCodecs) {
             return new PeerEurekaNodes(registry, this.eurekaServerConfig, this.eurekaClientConfig, serverCodecs, this.applicationInfoManager);
@@ -81,22 +82,31 @@ Server端源码分析
         }
     }
     
+    服务剔除:
     上面的配置类有个@Import(EurekaServerInitializerConfiguration.class)
     EurekaServerInitializerConfiguration#start里启动了一个线程,线程里做了如下事件
         // 初始化EurekaServer，同时启动Eureka Server
         eurekaServerBootstrap.contextInitialized(EurekaServerInitializerConfiguration.this.servletContext);
-            initEurekaEnvironment();//初始化EurekaServer运行环境
             initEurekaServerContext();//初始化EurekaServer上下文
                 EurekaServerContextHolder.initialize(this.serverContext);
                 int registryCount = this.registry.syncUp();// 从相邻的eureka节点复制注册表
                     register(instance, instance.getLeaseInfo().getDurationInSecs(), true);//将其他节点的实例注册到本节点
                 this.registry.openForTraffic(this.applicationInfoManager, registryCount);
-                    默认每30秒发送心跳，1分钟就是2次,修改eureka状态为up,同时，这里面会开启一个定时任务，用于清理60秒没有心跳的客户端。自动下线
+                    super.postInit();
+                        默认每30秒发送心跳，1分钟就是2次,修改eureka状态为up,同时，这里面会开启一个定时任务，用于清理60秒没有心跳的客户端。自动下线
         
         publish(new EurekaRegistryAvailableEvent(getEurekaServerConfig()));// 发布EurekaServer的注册事件
         publish(new EurekaServerStartedEvent(getEurekaServerConfig()));
             发送Eureka Start 事件 ， 其他还有各种事件，我们可以监听这种时间，然后做一些特定的业务需求
-         
+    
+    请求接受处理
+        InstanceResource类主要用于接受请求，收到请求后调用InstanceRegistry类的方法进行处理。以renew为例：
+            Response renewLease()
+                boolean isFromReplicaNode = "true".equals(isReplication);
+                boolean isSuccess = registry.renew(app.getName(), id, isFromReplicaNode);
+    
+    
+    
 Client端源码分析
 
     客户端一般要在应用主类中配置@EnableDiscoveryClient注解,在application.properties中用eureka.client.serviceUrl.defaultZone参数指定服务注册中心地址
@@ -140,6 +150,16 @@ Client端源码分析
                         scheduler.schedule(this.heartbeatTask, (long)renewalIntervalInSecs, TimeUnit.SECONDS);
                         HeartbeatThread实现了Runnable接口,run方法中调用了renew()方法,renew方法向服务端发送rest续约请求, 如果请求返回404,就发送注册
                         也就是如果服务端删除了该节点,那么就重新注册
+                    注册状态变更事件
+                        statusChangeListener = new StatusChangeListener() {
+                                        public String getId() { return "statusChangeListener"; }
+                                        public void notify(StatusChangeEvent statusChangeEvent) {
+                                            DiscoveryClient.this.instanceInfoReplicator.onDemandUpdate();
+                                                //InstanceInfoReplicator.this.run();
+                                                    //discoveryClient.register();
+                                        }
+                                    };
+                        applicationInfoManager.registerStatusChangeListener(this.statusChangeListener);
                     instanceInfoReplicator.start 服务注册
                         Future next = scheduler.schedule(this, initialDelayMs, TimeUnit.SECONDS);
                             InstanceInfoReplicator#run
@@ -147,7 +167,7 @@ Client端源码分析
                                 discoveryClient.register();//注册
                                     就是发送一个REST请求的方式进行的，传入的参数为InstanceInfo对象，内部保存的就是关于服务的元数据。
                                 Future next = scheduler.schedule(this, replicationIntervalSeconds, TimeUnit.SECONDS);//注册任务,定时刷新
-      
+                    
     服务注册中心处理
         客户端和服务端所有的交互都通过REST请求来发起的，那服务注册中心又是如何处理这些请求的呢？
             Eureka Server对于各类REST请求的定义都位于com.netflix.eureka.resources包中，以处理服务注册为例，
@@ -158,7 +178,18 @@ Client端源码分析
                     super.register(info, isReplication);
         总结: 服务注册的过程大致如下，先调用publishEvent方法，将该新服务注册的事件传播出去，再调用父类方法注册实现，将InstanceInfo中的元数据保存在一个ConcurrentHashMap对象中。
             注册中心存储了两层Map结构，第一层key为存储的服务名称，value为InstanceInfo中的appName属性，第二层key为实例名称，value为InstanceInfo中的instanceId属性。
-                    
+    
+    服务关闭
+        
+        服务关闭之后，会回调到EurekaAutoServiceRegistration类的onApplicationEvent方法：
+            然后调用stop();//反正最终是调用EurekaHttpClient中的rest请求改变状态
+                EurekaServiceRegistry#deregister(this.registration);
+                    reg.getApplicationInfoManager().setInstanceStatus(InstanceInfo.InstanceStatus.DOWN);//ApplicationInfoManager#setInstanceStatus
+                        ApplicationInfoManager.StatusChangeListener#notify(new StatusChangeEvent(prev, next));
+    
+    
+    
+                            
 源码精髓
 
     参考: https://blog.csdn.net/qq_34680763/article/details/123736997
@@ -216,11 +247,12 @@ Eureka Server服务端Jersey接口源码分析
 
 
 
+https://developer.aliyun.com/article/894907?spm=a2c6h.12873639.article-detail.32.614d17cfTNe3p9
+https://developer.aliyun.com/article/894920?spm=a2c6h.12873639.article-detail.65.40141410Yfdigw
+https://developer.aliyun.com/article/894927?spm=a2c6h.12873639.article-detail.29.614d17cfTNe3p9
 
-
-
-
-
+https://developer.aliyun.com/article/856277
+https://www.jianshu.com/p/202337624e2d
 
 
 
