@@ -1,1 +1,66 @@
 [源码解析](https://zhuanlan.zhihu.com/p/409109888)
+
+功能:
+    
+    Bulkhead (隔离)。用来根据用途、用户等，对重要的资源进行隔离，防止系统中错误的蔓延。
+    Circuit Breaker (断路器)断路器通过包装下游的调用，检测下游是否发生故障。如果故障率达到指定的阈值，断路器会打开，之后一段时间内的调用都会直接返回错误。在过一段时间后，它如果发现下游服务已经恢复正常，则恢复正常对下游服务的调用。它遵循 Fail Fast 的原则，让来自上游的调用不用苦等无法正常工作的下游服务的回复，也给艰难挣扎的下游服务喘息的空间。
+    Retry (重试)。并不是所有的错误、所有的接口都适合重试，重试的次数和间隔也需要进行考量。
+    Degradtion (降级)。当下游出现错误无法提供服务时，降级为返回默认值、缓存值等不依赖出错服务的响应，保障服务的总体可用性。
+
+
+Hystrix 具备如下特性：
+
+    在出现延迟和失败调用的时候保护服务，并提供控制
+    防止在复杂分布式系统中出现的连锁失败
+    快速失败，快速恢复
+    优雅降级
+    实时的监控、警报、配置
+
+    2018 Hystrix 正式进入维护阶段，不再添加新的功能，并推荐新的项目使用受 Hystrix 启发，更加轻量、更多采用函数式调用的 resilience4j。
+
+![Hystrix 的执行流程](img/1501658209681_.pic_hd.jpg)
+
+    1.构建HystrixCommand或HystrixObservableCommand。
+        Hystrix 中采用 Command Pattern 来包装对下游依赖的请求。在 Command 的实现中包含对下游进行调用的逻辑，而每一次调用则会构建一个新的 Command 实例。
+        根据调用产生的结果是单个还是多个，用户可以选择是继承 HystrixCommand 还是 HystrixObservableCommand。
+    2.执行上一步创建的 Command 实例。
+        根据 Command 的类型 (HystrixCommand/ HystrixObservableCommand) 以及执行方式 (同步 / 异步 / 即时 / 延后)，选择如下方法中的一种来执行 Command:
+            execute(): 仅适用于 HystrixCommand，同步阻塞执行，并返回下游返回的响应或抛出异常，是 queue().get() 的 shortcut。
+            queue(): 仅适用于 HystrixCommand，异步执行，返回 Future 对象，是 toObservable().toBlocking().toFuture() 的 shortcut。
+            observe(): 订阅发送响应的 Observable 对象，并返回该 Observable 的镜像。(即时执行)
+            toObservable(): 返回发送响应的 Observable 对象，仅当用户主动订阅后才开始执行具体逻辑并返回响应。(延时执行)
+            
+            可以发现，其实四种执行方法都是基于 Observable 的实现。Observable在 Hystrix 的实现中被大量使用。
+                K value = command.execute(); 
+                Future<K> fValue = command.queue(); 
+                Observable<K> ohValue = command.observe(); //hot observable 
+                Observable<K> ocValue = command.toObservable(); //cold observable
+            
+    3. 判断是否有启用响应缓存。
+        如果有可用的缓存，将在这一步直接返回缓存中的值。
+    
+    4. 判断断路器是否打开。
+        若断路器打开，则不会继续执行 Command，而是直接去尝试获取 Fallback。
+        若断路器关闭，则继续执行。
+    
+    5. 判断线程池 / 排队队列 / 信号量 是否已经被占满。
+        根据 Command 采用的隔离策略 (后面会详细说)，如果正在进行的请求数已满，则放弃执行，尝试获取 Fallback。
+    
+    6. 进行实际调用。
+        触发具体的调用实现：HystrixCommand.run() 或 HystrixObservableCommand.construct()。如果调用超过了配置的超时时间，会抛出一个 TimeoutException，随后和抛出其他除了 HystrixBadRequestException 的异常一样进入获取 Fallback 的流程。
+        对于具体执行调用并由于超时等原因阻塞住的线程，Hystrix 只能够尝试进行打断。但是由于大多数的 Java HTTP client 并不会响应 InterruptedException，可能线程还是会继续阻塞直到连接超时，导致线程池占满。因此，用户最好在代码中对 InterruptedException 进行处理，以及为 http 客户端配置合理的超时时间。
+        如果调用正常执行 (没有出现超时或异常)，Hystrix 则在写日志、记录监控信息后返回。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
