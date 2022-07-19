@@ -236,6 +236,15 @@ Eureka Server服务端Jersey接口源码分析
         尽可能保证了内存注册表数据不会出现频繁的读写冲突问题。
         并且进一步保证对Eureka Server的大量请求，都是快速从纯内存走，性能极高（可以稍微估计下对于一线互联网公司，内部上千个eureka client实例，每分钟对eureka上千次的访问，一天就是上千万次的访问）
 
+    缓存读取总结：
+    1. 首先进入只读缓存；
+    2. 如果只读缓存没有的话就进入读写缓存；
+    3. 如果读写缓存也没有， 就执行监听器的逻辑，从真实数据里面拿。
+    
+    缓存在什么时候会发生更改？
+    1. 只读缓存修改的地点,  只读缓存只能通过定时任务，每 30 秒进行一次同步更新。
+    2. 如果只读缓存找不到，但是读写缓存可以查询到，就更新到只读缓存。
+    3. 延迟的统计：30秒计时器延迟 + 客户端缓存延迟 30s + ribbon (1s) = 61秒
 
 
 
@@ -247,12 +256,15 @@ Eureka Server服务端Jersey接口源码分析
 
 
 
-https://developer.aliyun.com/article/894907?spm=a2c6h.12873639.article-detail.32.614d17cfTNe3p9
-https://developer.aliyun.com/article/894920?spm=a2c6h.12873639.article-detail.65.40141410Yfdigw
-https://developer.aliyun.com/article/894927?spm=a2c6h.12873639.article-detail.29.614d17cfTNe3p9
+[注册&心跳&下架](https://developer.aliyun.com/article/894907?spm=a2c6h.12873639.article-detail.32.614d17cfTNe3p9)
 
-https://developer.aliyun.com/article/856277
-https://www.jianshu.com/p/202337624e2d
+[集群同步&自我保护机制&缓存机制](https://developer.aliyun.com/article/894920?spm=a2c6h.12873639.article-detail.65.40141410Yfdigw)
+
+[初始化&注册&拉取&心跳&下架](https://developer.aliyun.com/article/894927?spm=a2c6h.12873639.article-detail.29.614d17cfTNe3p9)
+
+[核心源码解析](https://developer.aliyun.com/article/856277)
+
+[源码解析](https://www.jianshu.com/p/202337624e2d)
 
 
 
