@@ -51,11 +51,33 @@ Hystrix 具备如下特性：
         对于具体执行调用并由于超时等原因阻塞住的线程，Hystrix 只能够尝试进行打断。但是由于大多数的 Java HTTP client 并不会响应 InterruptedException，可能线程还是会继续阻塞直到连接超时，导致线程池占满。因此，用户最好在代码中对 InterruptedException 进行处理，以及为 http 客户端配置合理的超时时间。
         如果调用正常执行 (没有出现超时或异常)，Hystrix 则在写日志、记录监控信息后返回。
 
+    7. 计算线路健康程度
+        根据新取得的监控信息，判断是否要打开或关闭断路器。
+    
+    8. 获取 Fallback。
+        在上述提到的数种情况下不执行具体调用或者调用失败，Hystrix 均会尝试获取 Fallback 响应，也就是调用用户实现的 HystrixCommand.getFallback() 或 HystrixObservableCommand.resumeWithFallback()。Fallback 顾名思义是一种降级的举措，所以用户尽量应该让这一步不会失败。如果恰巧获取 Fallback 也是网络调用，则需要通过 HystrixCommand 或 HystrixObservableCommand 再包一层。
+        如果用户没有实现 Fallback 方法或者 Fallback 本身抛出异常，则 Hystrix 会返回直接发送 onError 通知的 Observable 实例。下面是四种调用方式在没有实现 Fallback 或者 Fallback 抛出异常时的行为:
+        execute() - 抛出异常
+        queue() - 返回 Future，但是在调用 get() 方法时会抛出异常
+        observe() - 返回 Observable 实例，当被订阅时会马上结束并调用订阅者的 onError 方法
+        toObservable() - 同上
+    
+    9. 通过 Observable 的方式，返回调用成功的响应。根据不同的调用方式，Observable 可能会被转换。
+![](img/1511658211229_.pic.jpg)
 
+    execute() - 通过和 queue() 相同的方式获取 Future 对象，并通过调用 get() 来获取最底层的 Observable 发送的单个响应
+    queue() - 将 Observable 转化为 BlockingObservable 以转化为 Future 并返回
+    observe() - 订阅 Observable 使得执行马上开始，并返回一个在用户订阅后可以回放 Observable 的镜像 Observable。
+    toObservable() - 返回原样的 Observable，仅在用户进行 subscribe 之后才开始执行。
 
+主要部件
 
+    HystrixCommand 和 HystrixObservableCommand 为 Hystrix 主要对外暴露的两个类，使用 Command Pattern 对可能有风险的函数功能(通常是通过网络调用下游服务)进行包装，为其提供错误及延迟容忍、性能数据收集、断路器以及隔离功能。
+几个模块,Caching 和 Collapser 相对其他四个模块不是那么重要
 
+![Alt](img/1521658212642_.pic.jpg)
 
+    动态配置 DynamicProperties
 
 
 
