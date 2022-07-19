@@ -73,16 +73,192 @@ Hystrix 具备如下特性：
 主要部件
 
     HystrixCommand 和 HystrixObservableCommand 为 Hystrix 主要对外暴露的两个类，使用 Command Pattern 对可能有风险的函数功能(通常是通过网络调用下游服务)进行包装，为其提供错误及延迟容忍、性能数据收集、断路器以及隔离功能。
-几个模块,Caching 和 Collapser 相对其他四个模块不是那么重要
+
+    主要模块DynamicProperties,CircuitBreaker,Collapser,Metrics,Isolation几个模块,Caching 和 Collapser 相对其他四个模块不是那么重要
 
 ![Alt](img/1521658212642_.pic.jpg)
 
     动态配置 DynamicProperties
+        Hystrix 是基于配置运行的，在各个阶段都有很多配置项，而且有不少需要根据线上的运行情况进行调整，例如超时时间，线程数等。因此，Hystrix 一大特性就是支持动态修改配置，在接口和使用方面都做了相应的支持。
+        默认使用自家的 Archaius 作为动态配置源,用户可以切换为自己的动态配置源实现。
+        Hystrix 根据配置的用途划分为几个配置类，例如 HystrixCommandProperties, HystrixThreadPoolProperties 就分别对应 Command 相关的配置以及线程池相关的配置。里面为各个特定的配置都提供了 getter，返回的是泛型接口实例 HystrixProperty<T>。这样的设计是提供了足够的灵活性，让配置提供方自由实现具体的配置获取逻辑。在默认实现中，就通过多层组合 (composite) 的方式实现了链式优先级动态配置。
+        以 HystrixCommandProperties 为例，其结构如图:
+![Alt](img/1531658216417_.pic.jpg)
 
+        在获取配置时，会返回 HystrixProperty 接口的实例，具体的实现类为 ChainHystrixProperty，底层为 ChainProperty，其中以类似链表的形式连接几个 HystrixDynamicProperty，对应同一个配置不同优先级的 key。 例如，hystrix.command.xxx.xxx 的优先级要比 hystrix.command.default.xxx.xxx 要高，仅在没有找到前者的时候会使用后者。 而 HystrixDynamicProperty 又是从 HystrixDynamicProperties 获取的，也就是上文提到的动态配置源，可在 HystrixPlugins 中进行配置，默认会使用 HystrixDynamicPropertiesArchaius 也就是基于 Archaius 的实现。
+        Archaius 本身也是支持动态修改配置的库，也有对 Spring 的支持，对 Spring Boot 应用来说，只要修改 Spring 的配置就能够修改 Archaius 的配置，可以实现大部分配置的线上实时修改。
+        不过，也不是所有的配置都支持动态修改，具体可以看下官方仓库 wiki 中的 configuration 章节。
+   
+    断路器 CircuitBreaker
+        默认情况下，当一段时间内有一定数量的请求失败和超时数量达到一定百分比，可以触发断路，之后一段时间内新进入的请求会直接失败，不会请求故障的下游服务。过去一段时间后，Hystrix 再通过放行一个请求的方式检查下游是否恢复正常，如果已恢复，则停止断路，放行后续请求，否则重复上述断路流程。
+        断路器会实现 HystrixCircuitBreaker 接口
+            public interface HystrixCircuitBreaker {
+                boolean allowRequest();// 是否允许执行
+                boolean isOpen();// 断路器是否处在打开状态
+                void markSuccess();// 在半打开状态，表示测试请求调用成功
+                void markNonSuccess();// 在半打开状态，表示测试请求调用失败
+                boolean attemptExecution();// 在 Command 开始执行时调用
+            }
+        断路器默认实现为 HystrixCircuitBreakerImpl
+        如果用户有特定的需求，完全可以通过自己实现断路器达成。Command 只通过外部暴露的 allowRequest 和 isOpen 等部分方法和断路器实例交互，内部可以实现多种多样的逻辑。
+        在我们的实践中，我们发现默认的断路器实现使用单个请求进行下游是否恢复健康的判断是不够全面的，有可能会碰到单个请求恰好成功，之后放行大量请求导致发生超时的尴尬情况。因此，我们实现了具备阶梯恢复特性的断路器用于替换流量较大的 Command 下的默认断路器实现。如下:
+            在默认断路器实现下有三种断路器状态: CLOSED, OPEN 和 HALF_OPEN。 CLOSED 代表当前断路器关闭，请求正常通过；OPEN 则代表断路器打开，一定时间内请求不可通过；HALF_OPEN 代表断路器打开一段时间后，放行了一个请求到下游，待结果返回。 断路器会被并发调用，因此需要保证状态的转变是并发安全的。断路器使用 AtomicReference 保存当前的状态，当需要进行状态变更时使用 CAS 进行修改。
+            那么，断路器如何在不同的状态间进行调整呢？后面介绍线程池的时候，会提到过基于滑动窗口和桶的监控信息统计类 HystrixThreadPoolMetrics，其实 Command 也有相似的统计类 HystrixCommandMetrics，它们都是 HystrixMetrics 的实现类，机制非常相似。断路器会订阅 HystrixCommandMetrics，在滑动窗口发生滚动的时候根据最新窗口内的请求量和成功率判断是否要将断路器的状态从关闭改为打开。
+                // 断路器订阅 HystrixCommandMetrics 的回调方法
+                public void onNext(HealthCounts hc) {
+                    // 是否到达判断是否断路的最低请求量，否则跳过，因为请求量少的时候通过成功百分比来判断不准确
+                    if (hc.getTotalRequests() < properties.circuitBreakerRequestVolumeThreshold().get()) {
+                
+                    } else {
+                        if (hc.getErrorPercentage() < properties.circuitBreakerErrorThresholdPercentage().get()) {
+                          // 错误率没有达到上限，无需进行操作
+                        } else {
+                            // 错误率超过上限，通过 CAS 将断路器状态调整为 OPEN，并记录时间用于后续休眠时间的判断
+                            if (status.compareAndSet(Status.CLOSED, Status.OPEN)) {
+                                circuitOpened.set(System.currentTimeMillis());
+                            }
+                        }
+                    }
+                }
+                假设这里由于错误率太高，断路器打开，那么在用户配置的休眠窗口内 (circuitBreakerSleepWindowInMilliseconds)，它将持续拒绝进入的请求。过了这个窗口，则在下一个请求进入时将状态修改为 HALF_OPEN，具体执行逻辑在 attemptExecution 方法内:
+                if (isAfterSleepWindow()) {
+                    //only the first request after sleep window should execute
+                    //if the executing command succeeds, the status will transition to CLOSED
+                    //if the executing command fails, the status will transition to OPEN
+                    //if the executing command gets unsubscribed, the status will transition to OPEN
+                    if (status.compareAndSet(Status.OPEN, Status.HALF_OPEN)) {
+                        return true;
+                    } else {
+                        return false;
+                    }
+                } else {
+                    return false;
+                }
+                这个请求在执行完成后，通过调用 markSuccess 或者 markNonSuccess 回调方法，决定断路器是关闭还是重新打开。整体状态图如下:
+![Alt](img/1541658217168_.pic.jpg)
 
-
-
-
-
-
+        实践中，发现默认的断路器实现有两个不足：
+            1.在半打开状态，通过放行一个请求判断下游的健康度进而决定是否要关闭断路器的判断不够准确。使得断路器打开的逻辑是在达到一定数量的请求中，有一定比例的请求失败。在这样的状态下，放行一个请求并成功的概率并不算小，后续断路器仍可能会马上断开，导致断路器处在重复开关的状态。可以想象下游是一条堵塞的水管，一秒钟只能流走一滴水，而上游是一条大水管。触发断路后，上游水管停水，下游水管可以处理疏通。但是，在下游水管疏通完成之前，上游水管放行一滴水，判断下游健康，开始大量放水，下游的疏通工作就无法进行了。
+                实现了阶梯恢复的断路器 HystrixSteppingRecoverCircuitBreaker。它在默认的断路器行为上做了扩展，在放行单个请求并成功后，进入阶梯恢复状态，根据百分比逐步放行越来越多的请求到下游。如果放行的请求成功率达到要求，则继续提高放行请求的百分比直到 100% 恢复。由于它基于成功率进行判断，因此对调用量有一定的要求，适合放在流量较大的接口使用。部分代码如下:
+                public class HystrixSteppingRecoverCircuitBreaker implements HystrixCircuitBreaker {
+                  enum Status {CLOSED,OPEN,HALF_OPEN_SINGLE,HALF_OPEN_STEPPING; // 添加 STEPPING 状态 }
+                  @Override
+                  public boolean allowRequest() {
+                        if (properties.circuitBreakerForceOpen().get()) {return false;}
+                        if (properties.circuitBreakerForceClosed().get()) {return true; }
+                        if (circuitOpened.get() == -1) {return true;}
+                        if (status.get() == Status.HALF_OPEN_STEPPING) {
+                          // 处于 STEPPING 状态时，放行当前 step 百分比的请求
+                          return ThreadLocalRandom.current().nextFloat() < stepper.currentStep();
+                        }
+                        if (isAfterSleepWindow() && status.compareAndSet(Status.OPEN, Status.HALF_OPEN_SINGLE)) {
+                          write(Status.OPEN, Status.HALF_OPEN_SINGLE);
+                          return true;
+                        }
+                        return false;
+                  }
+                
+                  @Override
+                  public void markSuccess() {
+                    // 在 HALF_OPEN_SINGLE 状态，放行单个请求成功后，进入 stepping 阶梯恢复状态
+                    toSteppingIfSingle();
+                  }
+                  // 状态转换方法
+                  private void onNext(HealthCounts healthCounts) {
+                    if (status.get() == Status.HALF_OPEN_STEPPING && isSteppingRequestVolumeSufficient(healthCounts)) {
+                      if (isSuccessRateSufficient(healthCounts)) {
+                        if (stepper.nextStep() == 1) {
+                          toCloseIfStepping();
+                        }
+                        return;
+                      }
+                      toOpenIfStepping();
+                    }
+                    if (isRequestVolumeSufficient(healthCounts) && !isSuccessRateSufficient(healthCounts) && status.compareAndSet(Status.CLOSED, Status.OPEN)) {
+                      circuitOpened.set(System.currentTimeMillis());
+                      write(Status.CLOSED, Status.OPEN);
+                    }
+                  }
+                  private void toSteppingIfSingle() {
+                    if (status.compareAndSet(Status.HALF_OPEN_SINGLE, Status.HALF_OPEN_STEPPING)) {
+                      resubscribe();
+                      write(Status.HALF_OPEN_SINGLE, Status.HALF_OPEN_STEPPING);
+                    }
+                  }
+                  private void toCloseIfStepping() {
+                    if (status.compareAndSet(Status.HALF_OPEN_STEPPING, Status.CLOSED)) {
+                      resubscribe();
+                      stepper.resetStep();
+                      circuitOpened.set(-1L);
+                      write(Status.HALF_OPEN_STEPPING, Status.CLOSED);
+                    }
+                  }
+                  private void toOpenIfStepping() {
+                    if (status.compareAndSet(Status.HALF_OPEN_STEPPING, Status.OPEN)) {
+                      stepper.resetStep();
+                      circuitOpened.set(System.currentTimeMillis());
+                      write(Status.HALF_OPEN_STEPPING, Status.OPEN);
+                    }
+                  }
+                
+                // 实现 stepper，管理放行百分比
+                  static class Stepper {
+                    private AtomicInteger currentStepPos = new AtomicInteger(0);
+                    private List<Double> steps;
+                    private double currentStep() {
+                      int index = currentStepPos.get();
+                      return isStepEnd(index) ? 1 : steps.get(index);
+                    }
+                    private double nextStep() {
+                      int index = currentStepPos.incrementAndGet();
+                      if (isStepEnd(index)) { return 1; }
+                      return steps.get(index);
+                    }
+                
+                    private boolean isStepEnd(int index) {
+                      return index >= steps.size() || steps.get(index) == 1;
+                    }
+                    private void resetStep() {
+                      currentStepPos.set(0);
+                    }
+                  }
+                }
+            2.断路器的状态变化缺少一定的通知机制。HystrixPlugins 里面的 EventNotifier 可以对断开的时间作通知，但是我们希望能够对恢复的事件也作通知，把断路器的状态变化接入到我们的预警系统中。
+                创建了一个 Observable 订阅流负责存储断路器状态变更的事件，在断路器状态发生变化时写入。在此之上实现 Callback 机制，可以让用户为某个 Command 注册 callback，对该 command 的事件进行订阅，并通过 composition 的方式实现多层订阅。
+        
+    隔离机制 Isolation
+    
+        Hystrix 使用 Bulkhead 模式提供容错功能。简单来说，就是把系统依赖但是却互相不相关的服务调用所使用到的资源隔离开，这样在一个下游服务故障的时候，不会导致整个服务的资源都被占据。
+        Hystrix 为不同的应用场景提供两种隔离级别：Thread 和 Semaphore。
+        
+        线程隔离
+            Netflix 中使用最广泛并且推荐使用的是 Thread。Thread 隔离级别很好理解，就是让调用在另外的线程中执行，并且相关的调用都使用一个线程池中的线程。
+            这样做的好处如下：
+                对委托线程来说，能够随时在出现超时调用时 walk away，执行 fallback 的逻辑，不会阻塞到连接超时从而拖累服务的响应时间。
+                对隔离效果来说，当下游服务出现超时故障时，仅仅该线程池会爆满，对使用其它线程池的不相关服务以及服务本身没有任何影响。当下游恢复健康后，线程池会再次变得可用，恢复往常状态。
+                对监控来说，由于线程池有多种监控数据，例如占用线程数、排队请求数、执行任务数等，当我们错误地配置了客户端或是下游服务出现性能变化我们都能够第一时间感知到并做出应对。
+                对项目来说，相当于引入了一个小型并发模块，可以在使用同步客户端的情况下方便构建异步系统 (Netflix API 就是这么做的)
+            然而，线程池的大小需要怎么设置呢？大多数场景下，默认的 10 个线程就能足够了。如果想要进一步调整的话，官方给出了一条简单有效的公式:
+                requests per second at peak when healthy × 99th percentile latency in seconds + some breathing room
+                峰值 qps * P99 响应时间 + 适当数量的额外缓冲线程
+                举个简单的例子，对于一个峰值每秒调用 30 次，p99 响应时间为 0.2s 的接口，可算出需要 30 * 0.2 + 4 = 10 个线程。不过在实际应用中还是需要具体情况具体分析，对于一些数值方差较大的接口，这个公式就不太适用了。
+            
+![Alt](img/1551658218345_.pic_hd.jpg)
+                
+                当然，线程隔离也不是银弹。业务线程将具体调用提交到线程池到执行完成，就需要付出任务排队、线程池调度、上下文切换的开销。Netflix 也考虑到这一点，并做了对应的测试。对于一个每秒被请求 60 次的接口，使用线程隔离在 P50、P90、P99 的开销分别为 0ms、3ms 和 9ms。
+![Alt](img/1561658219178_.pic_hd.jpg)      
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
+        
 
