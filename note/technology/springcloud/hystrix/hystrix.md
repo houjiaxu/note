@@ -65,19 +65,43 @@ Hystrix 具备如下特性：
                 }
 
 Hystrix核心方法applyHystrixSemantics解析
+![Alt](img/c74abc7516fd4b9c54f68aecc3c2f09.png)
 
-    circuitBreaker.attemptExecution()
+    circuitBreaker.attemptExecution()//是否允许接收请求
 ![Alt](img/3f2e948e93f7284e33da43877d3f167.png)
     
-    是否强制开启断路器和是否强制关闭断路器都是配置决定的，对应HystrixCommandProperties的circuitBreakerForceOpen和circuitBreakerForceClosed,
-        默认都是false,默认配置都在HystrixCommandProperties中
-    滚动窗口的事件判断: 滚动窗口时间的作用, 就是当熔断开启后, 拒绝请求，过了滚动窗口时间之后， 熔断器状态会变成半开状态，然后下一次请求成功，则将熔断器从半开状态变为关闭状态，如果请求失败，则还是变为开启状态，拒绝请求。等再过了滚动窗口时间之后，又进行这样的机制，周而复始。
-        isAfterSleepWindow方法逻辑:如果当前时间 > 上一次 开启熔断器的时间 + 滚动窗口的时间，则返回ture,更新为半开状态,滚动窗口时间配置是circuitBreakerSleepWindowInMilliseconds,默认5s
-    
-    允许接受请求的条件 ：
-        (配置强制关闭熔断器 || 熔断器关闭 || 熔断器非关闭) && 上次开启熔断器的时间到现在，已经过了滚动窗口时间，可以设置为半开状态的话，则允许接受请求
-    不允许接受请求的条件 ：
-        没配置强制关闭熔断器，配置了强制开启熔断器， || 熔断器打开，且上次开启熔断器的时间到现在，还没有过滚动窗口时间
+        是否强制开启断路器和是否强制关闭断路器都是配置决定的，对应HystrixCommandProperties的circuitBreakerForceOpen和circuitBreakerForceClosed,
+            默认都是false,默认配置都在HystrixCommandProperties中
+        滚动窗口的事件判断: 滚动窗口时间的作用, 就是当熔断开启后, 拒绝请求，过了滚动窗口时间之后， 熔断器状态会变成半开状态，然后下一次请求成功，则将熔断器从半开状态变为关闭状态，如果请求失败，则还是变为开启状态，拒绝请求。等再过了滚动窗口时间之后，又进行这样的机制，周而复始。
+            isAfterSleepWindow方法逻辑:如果当前时间 > 上一次 开启熔断器的时间 + 滚动窗口的时间，则返回ture,更新为半开状态,滚动窗口时间配置是circuitBreakerSleepWindowInMilliseconds,默认5s
+        
+        允许接受请求的条件 ：
+            (配置强制关闭熔断器 || 熔断器关闭 || 熔断器非关闭) && 上次开启熔断器的时间到现在，已经过了滚动窗口时间，可以设置为半开状态的话，则允许接受请求
+        不允许接受请求的条件 ：
+            没配置强制关闭熔断器，配置了强制开启熔断器， || 熔断器打开，且上次开启熔断器的时间到现在，还没有过滚动窗口时间
+    如果上面允许接收了请求,那么则会尝试结合隔离策略，判断是否真的会执行业务方法。
+        getExecutionSemaphore();//获取隔离策略
+            如果是信号量隔离，判断是否存在信号量隔离对象, 没有 就会创建一个TryableSemaphoreActual对象，并传入最大请求数。有就直接返回。
+                TryableSemaphoreActual是AbstractCommand的内部类,类中有一个原子型的Integer计数器，这个就是用来记录当前正在并发处理的请求数的。接受请求，就+1，请求处理完就减1。tryAcquire方法里 会与最大允许请求数判断，如果是否达到上线了，就不接受请求。信号量隔离的原理就是这样。
+            如果不是信号量隔离，返回默认的TryableSemaphore对象,即返回TryableSemaphoreNoOp.DEFAULT对象
+        获取隔离策略之后,定义了一个匿名对象Action0里面有个call方法,该方法是在请求处理完成后调用,用来对TryableSemaphoreActual对象里的计数器减一的,即释放一个信号牌
+        调用TryableSemaphoreActual#tryAcquire尝试获取信号牌,
+            如果是信号量隔离:
+                获取信号牌:逻辑是先对计数器+1，然后拿计数器加1后的值 与配置的最大允许请求数进行比较。
+                如果获取到,则执行业务方法
+                如果没获取到,则不允许接收请求,调用handleSemaphoreRejectionViaFallback,内部调用getFallbackOrThrowException走降级方法
+            如果不是信号量隔离:也就是隔离策略返回TryableSemaphoreNoOp
+                获取信号牌: TryableSemaphoreNoOp类中的tryAcquire是固定返回true,即一定会获取到信号牌.然后就会调用业务方法
+                执行业务方法:
+                    executeCommandAndObserve();里面有个重要的方法executeCommandWithSpecifiedIsolation
+                        结果返回return getUserExecutionObservable(_cmd);该方法调用了getExecutionObservable,实际调用HystrixCommand#getExecutionObservable
+                            Observable.just(run());//run()方法实际调用的是GenericCommand#run()
+                                getCommandAction().execute(getExecutionType());//查看其execute方法,实际调用MethodExecutionAction#execute,
+                                    executeWithArgs//该方法又调用return execute(object, method, args);里面是利用反射调用业务方法
+                如果执行线程的线程池满了的话就走降级方法, 这个就是线程池的处理了.
+    如果是不允许接收请求,则调用handleShortCircuitViaFallback,里面调用getFallbackOrThrowException走降级方法
+    总结: 比如熔断器开启，线程池，信号量都满了，则会走到降级方法,也是会反射调用到 fallback 方法，fallback 降级方法也是有信号量和线程池的大小控制的，也就是信号量或线程池是多少大小，
+        fallback 降级方法也会接收多少降级的请求。如果调用降级方法的信号量或线程池 都满了，则抛出响应的异常信息
 
 
 
