@@ -1,12 +1,15 @@
 [源码解析](https://zhuanlan.zhihu.com/p/409109888)
 
+[源码解析](https://www.jianshu.com/p/ef17ba4dfb34)
+
+hystrix是通过对接口方法进行AOP代理的方式来达到对某一个请求进行熔断降级的功能的。
+
 功能:
     
     Bulkhead (隔离)。用来根据用途、用户等，对重要的资源进行隔离，防止系统中错误的蔓延。
     Circuit Breaker (断路器)断路器通过包装下游的调用，检测下游是否发生故障。如果故障率达到指定的阈值，断路器会打开，之后一段时间内的调用都会直接返回错误。在过一段时间后，它如果发现下游服务已经恢复正常，则恢复正常对下游服务的调用。它遵循 Fail Fast 的原则，让来自上游的调用不用苦等无法正常工作的下游服务的回复，也给艰难挣扎的下游服务喘息的空间。
     Retry (重试)。并不是所有的错误、所有的接口都适合重试，重试的次数和间隔也需要进行考量。
     Degradtion (降级)。当下游出现错误无法提供服务时，降级为返回默认值、缓存值等不依赖出错服务的响应，保障服务的总体可用性。
-
 
 Hystrix 具备如下特性：
 
@@ -15,7 +18,6 @@ Hystrix 具备如下特性：
     快速失败，快速恢复
     优雅降级
     实时的监控、警报、配置
-
     2018 Hystrix 正式进入维护阶段，不再添加新的功能，并推荐新的项目使用受 Hystrix 启发，更加轻量、更多采用函数式调用的 resilience4j。
 
 源码分析:
@@ -24,14 +26,62 @@ Hystrix 具备如下特性：
         注解上有个@EnableCircuitBreaker注解,注解EnableCircuitBreaker上引入了@Import(EnableCircuitBreakerImportSelector.class)
         EnableCircuitBreakerImportSelector继承了SpringFactoryImportSelector, 查看其selectImports方法,返回了spring.factories中的自动配置类
         在spring-cloud-netflix-hystrix的spring.factories文件中配置了
-            org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
-            org.springframework.cloud.netflix.hystrix.HystrixAutoConfiguration,\
-            org.springframework.cloud.netflix.hystrix.HystrixCircuitBreakerAutoConfiguration,\
-            org.springframework.cloud.netflix.hystrix.security.HystrixSecurityAutoConfiguration
-            
             org.springframework.cloud.client.circuitbreaker.EnableCircuitBreaker=\
             org.springframework.cloud.netflix.hystrix.HystrixCircuitBreakerConfiguration
         此处对HystrixCircuitBreakerConfiguration进行扫描,该类主要注入了一个拦截器 HystrixCommandAspect
+            先看切点方法,就是对@HystrixCommand注解进行拦截
+                @Pointcut("@annotation(com.netflix.hystrix.contrib.javanica.annotation.HystrixCommand)")
+                public void hystrixCommandAnnotationPointcut() { }
+            查看HystrixCommandAspect#methodsAnnotatedWithHystrixCommand,使用的是环绕通知,对@HystrixCommand注解进行增强, 熔断降级，服务隔离等功能就在这个方法里
+                @Around("hystrixCommandAnnotationPointcut() || hystrixCollapserAnnotationPointcut()")
+                public Object methodsAnnotatedWithHystrixCommand(ProceedingJoinPoint joinPoint) throws Throwable {
+                    //获取执行方式executionType
+                    ExecutionType executionType = metaHolder.isCollapserAnnotationPresent() ? metaHolder.getCollapserExecutionType() : metaHolder.getExecutionType();
+                    try {
+                        result = CommandExecutor.execute(invokable, executionType, metaHolder);
+                        根据executionType的SYNCHRONOUS同步,ASYNCHRONOUS异步,OBSERVABLE(这个先不看),走不同的方法,
+                        同步:先通过castToExecutable是将HystrixInvokable invokable强制转换成HystrixExecutable类型 ，再执行运行execute()方法
+                            实现类是HystrixCommand.execute
+                                queue().get();//其中queue()返回的是个Future,调用get方法,同步返回执行结果
+                        异步:先通过castToExecutable是将HystrixInvokable invokable强制转换成HystrixExecutable类型 ，再执行运行execute()方法
+                            HystrixCommand.queue();//异步执行,不会等待返回结果
+                                Future<R> delegate = toObservable().toBlocking().toFuture();
+                                    toObservable();//调用的实际是AbstractCommand#toObservable,里面会创建一堆的匿名对象,主要看Hystrix主体逻辑的那个
+                                        final Func0<Observable<R>> applyHystrixSemantics = new Func0<Observable<R>>() {
+                                            @Override
+                                            public Observable<R> call() {
+                                                if (commandState.get().equals(CommandState.UNSUBSCRIBED)) {
+                                                    return Observable.never();
+                                                }
+                                                return applyHystrixSemantics(_cmd);//这里就是Hystrix的核心逻辑所在,AbstractCommand#applyHystrixSemantics
+                                            }
+                                        };
+                        return result
+                    } catch (HystrixBadRequestException var9) {
+                        throw var9.getCause();
+                    } catch (HystrixRuntimeException var10) {
+                        throw this.hystrixRuntimeExceptionToThrowable(metaHolder, var10);
+                    }
+                }
+
+Hystrix核心方法applyHystrixSemantics解析
+
+    circuitBreaker.attemptExecution()
+![Alt](img/3f2e948e93f7284e33da43877d3f167.png)
+    
+    是否强制开启断路器和是否强制关闭断路器都是配置决定的，对应HystrixCommandProperties的circuitBreakerForceOpen和circuitBreakerForceClosed,
+        默认都是false,默认配置都在HystrixCommandProperties中
+    滚动窗口的事件判断: 滚动窗口时间的作用, 就是当熔断开启后, 拒绝请求，过了滚动窗口时间之后， 熔断器状态会变成半开状态，然后下一次请求成功，则将熔断器从半开状态变为关闭状态，如果请求失败，则还是变为开启状态，拒绝请求。等再过了滚动窗口时间之后，又进行这样的机制，周而复始。
+        isAfterSleepWindow方法逻辑:如果当前时间 > 上一次 开启熔断器的时间 + 滚动窗口的时间，则返回ture,更新为半开状态,滚动窗口时间配置是circuitBreakerSleepWindowInMilliseconds,默认5s
+    
+    允许接受请求的条件 ：
+        (配置强制关闭熔断器 || 熔断器关闭 || 熔断器非关闭) && 上次开启熔断器的时间到现在，已经过了滚动窗口时间，可以设置为半开状态的话，则允许接受请求
+    不允许接受请求的条件 ：
+        没配置强制关闭熔断器，配置了强制开启熔断器， || 熔断器打开，且上次开启熔断器的时间到现在，还没有过滚动窗口时间
+
+
+
+
             HystrixCommandAspect中有块静态代码,里面放的是不同类型对应的MetaHolder的Factory：
                 META_HOLDER_FACTORY_MAP = ImmutableMap.builder()
                                             .put(HystrixCommandAspect.HystrixPointcutType.COMMAND, new HystrixCommandAspect.CommandMetaHolderFactory())
@@ -61,37 +111,7 @@ Hystrix 具备如下特性：
                     builder = HystrixCommandAspect.setDefaultProperties(builder, obj.getClass(), joinPoint);
                     return builder;
                     }
-            查看HystrixCommandAspect#methodsAnnotatedWithHystrixCommand
-                @Around("hystrixCommandAnnotationPointcut() || hystrixCollapserAnnotationPointcut()")
-                public Object methodsAnnotatedWithHystrixCommand(ProceedingJoinPoint joinPoint) throws Throwable {
-                    Method method = AopUtils.getMethodFromTarget(joinPoint);//获取对应的方法
-                    //根据不同的注解，选择对应多的metaHolderFactory,创建MetaHolder，MetaHolder中包含了所有必须的信息
-                    HystrixCommandAspect.MetaHolderFactory metaHolderFactory = (HystrixCommandAspect.MetaHolderFactory)META_HOLDER_FACTORY_MAP.get(HystrixCommandAspect.HystrixPointcutType.of(method));
-                    MetaHolder metaHolder = metaHolderFactory.create(joinPoint);
-                    HystrixInvokable invokable = HystrixCommandFactory.getInstance().create(metaHolder);
-                    //获取执行方式executionType
-                    ExecutionType executionType = metaHolder.isCollapserAnnotationPresent() ? metaHolder.getCollapserExecutionType() : metaHolder.getExecutionType();
-         
-                    try {
-                        
-                        Object result;
-                        if (!metaHolder.isObservable()) {
-                            result = CommandExecutor.execute(invokable, executionType, metaHolder);
-                            //先通过castToExecutable转换成HystrixExecutable类型 ，再执行运行execute()方法,execute中根据executionType的SYNCHRONOUS,ASYNCHRONOUS,OBSERVABLE,走不同的方法,
-                            同步使用的是HystrixCommand.execute。异步是HystrixCommand.queue。响应是HystrixObserable.observe和toObservable方法。
-                            HystrixCommand.execute：以同步阻塞的方式执行run，hystrix会从线程池中取一个线程来执行run()，并等待返回值。
-                            Hystrix.queue：调用queue()就直接返回一个Future对象。可通过 Future.get()拿到run()的返回结果，但Future.get()是阻塞执行的。若执行成功，Future.get()返回单个返回值。当执行失败时，如果没有重写fallback，Future.get()抛出异常。
-                        } else {
-                            result = this.executeObservable(invokable, executionType, metaHolder);
-                        }
-         
-                        return result;
-                    } catch (HystrixBadRequestException var9) {
-                        throw var9.getCause();
-                    } catch (HystrixRuntimeException var10) {
-                        throw this.hystrixRuntimeExceptionToThrowable(metaHolder, var10);
-                    }
-                }
+            
 
 
 
