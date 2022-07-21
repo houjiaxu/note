@@ -18,6 +18,90 @@ Hystrix 具备如下特性：
 
     2018 Hystrix 正式进入维护阶段，不再添加新的功能，并推荐新的项目使用受 Hystrix 启发，更加轻量、更多采用函数式调用的 resilience4j。
 
+源码分析:
+
+    @EnableHystrix 要是用Hystrix需要加上@EnableHystrix注解
+        注解上有个@EnableCircuitBreaker注解,注解EnableCircuitBreaker上引入了@Import(EnableCircuitBreakerImportSelector.class)
+        EnableCircuitBreakerImportSelector继承了SpringFactoryImportSelector, 查看其selectImports方法,返回了spring.factories中的自动配置类
+        在spring-cloud-netflix-hystrix的spring.factories文件中配置了
+            org.springframework.boot.autoconfigure.EnableAutoConfiguration=\
+            org.springframework.cloud.netflix.hystrix.HystrixAutoConfiguration,\
+            org.springframework.cloud.netflix.hystrix.HystrixCircuitBreakerAutoConfiguration,\
+            org.springframework.cloud.netflix.hystrix.security.HystrixSecurityAutoConfiguration
+            
+            org.springframework.cloud.client.circuitbreaker.EnableCircuitBreaker=\
+            org.springframework.cloud.netflix.hystrix.HystrixCircuitBreakerConfiguration
+        此处对HystrixCircuitBreakerConfiguration进行扫描,该类主要注入了一个拦截器 HystrixCommandAspect
+            HystrixCommandAspect中有块静态代码,里面放的是不同类型对应的MetaHolder的Factory：
+                META_HOLDER_FACTORY_MAP = ImmutableMap.builder()
+                                            .put(HystrixCommandAspect.HystrixPointcutType.COMMAND, new HystrixCommandAspect.CommandMetaHolderFactory())
+                                            .put(HystrixCommandAspect.HystrixPointcutType.COLLAPSER, new HystrixCommandAspect.CollapserMetaHolderFactory()).build();
+                CommandMetaHolderFactory和CollasperMetaHolderFactory都是继承了 抽象类MetaHolderFactory，作用就是 根据不同的类型创建一个MetaHolder ，MetaHolder 里面包含了当前方法 所需的各种必要信息 。
+                以CommandMetaHoldFactory为例，分析其create方法：
+                     public MetaHolder create(Object proxy, Method method, Object obj, Object[] args, ProceedingJoinPoint joinPoint) {
+                        HystrixCommand hystrixCommand = (HystrixCommand)method.getAnnotation(HystrixCommand.class);//获取@HystrixCommand注解的属性
+                        //根据方法的返回类型判断是同步还是异步的，这里有三种方式 同步(SYNCHRONOUS)，异步(ASYNCHRONOUS)，响应式(OBSERVABLE) 如果是 Future.class返回类型的为异步，如果是 (Observable.class, Single.class, Completable.class) 这三种类型中一种，为OBSERVABLE ，剩下的类型为 同步方式
+                        ExecutionType executionType = ExecutionType.getExecutionType(method.getReturnType());
+                        Builder builder = this.metaHolderBuilder(proxy, method, obj, args, joinPoint);
+                        if (EnvUtils.isCompileWeaving()) {
+                            builder.ajcMethod(HystrixCommandAspect.getAjcMethodFromTarget(joinPoint));
+                        }
+                        构建MetaHolder，将各种必须参数填入MetaHolder对象中，同时获取指定的FallBackMethod并进行填充，并对FallbackMethod进行校验
+                        return builder.defaultCommandKey(method.getName())
+                                .hystrixCommand(hystrixCommand)
+                                .observableExecutionMode(hystrixCommand.observableExecutionMode())
+                                .executionType(executionType)
+                                .observable(ExecutionType.OBSERVABLE == executionType).build();
+                    }
+
+
+                    Builder metaHolderBuilder(Object proxy, Method method, Object obj, Object[] args, ProceedingJoinPoint joinPoint) {
+                    Builder builder = MetaHolder.builder().args(args).method(method).obj(obj).proxyObj(proxy).joinPoint(joinPoint);
+                    HystrixCommandAspect.setFallbackMethod(builder, obj.getClass(), method);
+                    builder = HystrixCommandAspect.setDefaultProperties(builder, obj.getClass(), joinPoint);
+                    return builder;
+                    }
+            查看HystrixCommandAspect#methodsAnnotatedWithHystrixCommand
+                @Around("hystrixCommandAnnotationPointcut() || hystrixCollapserAnnotationPointcut()")
+                public Object methodsAnnotatedWithHystrixCommand(ProceedingJoinPoint joinPoint) throws Throwable {
+                    Method method = AopUtils.getMethodFromTarget(joinPoint);//获取对应的方法
+                    //根据不同的注解，选择对应多的metaHolderFactory,创建MetaHolder，MetaHolder中包含了所有必须的信息
+                    HystrixCommandAspect.MetaHolderFactory metaHolderFactory = (HystrixCommandAspect.MetaHolderFactory)META_HOLDER_FACTORY_MAP.get(HystrixCommandAspect.HystrixPointcutType.of(method));
+                    MetaHolder metaHolder = metaHolderFactory.create(joinPoint);
+                    HystrixInvokable invokable = HystrixCommandFactory.getInstance().create(metaHolder);
+                    //获取执行方式executionType
+                    ExecutionType executionType = metaHolder.isCollapserAnnotationPresent() ? metaHolder.getCollapserExecutionType() : metaHolder.getExecutionType();
+         
+                    try {
+                        
+                        Object result;
+                        if (!metaHolder.isObservable()) {
+                            result = CommandExecutor.execute(invokable, executionType, metaHolder);
+                            //先通过castToExecutable转换成HystrixExecutable类型 ，再执行运行execute()方法,execute中根据executionType的SYNCHRONOUS,ASYNCHRONOUS,OBSERVABLE,走不同的方法,
+                            同步使用的是HystrixCommand.execute。异步是HystrixCommand.queue。响应是HystrixObserable.observe和toObservable方法。
+                            HystrixCommand.execute：以同步阻塞的方式执行run，hystrix会从线程池中取一个线程来执行run()，并等待返回值。
+                            Hystrix.queue：调用queue()就直接返回一个Future对象。可通过 Future.get()拿到run()的返回结果，但Future.get()是阻塞执行的。若执行成功，Future.get()返回单个返回值。当执行失败时，如果没有重写fallback，Future.get()抛出异常。
+                        } else {
+                            result = this.executeObservable(invokable, executionType, metaHolder);
+                        }
+         
+                        return result;
+                    } catch (HystrixBadRequestException var9) {
+                        throw var9.getCause();
+                    } catch (HystrixRuntimeException var10) {
+                        throw this.hystrixRuntimeExceptionToThrowable(metaHolder, var10);
+                    }
+                }
+
+
+
+
+
+
+
+
+
+
 ![Hystrix 的执行流程](img/1501658209681_.pic_hd.jpg)
 
     1.构建HystrixCommand或HystrixObservableCommand。
@@ -246,12 +330,14 @@ Hystrix 具备如下特性：
 ![Alt](img/1551658218345_.pic_hd.jpg)
                 
                 当然，线程隔离也不是银弹。业务线程将具体调用提交到线程池到执行完成，就需要付出任务排队、线程池调度、上下文切换的开销。Netflix 也考虑到这一点，并做了对应的测试。对于一个每秒被请求 60 次的接口，使用线程隔离在 P50、P90、P99 的开销分别为 0ms、3ms 和 9ms。
+                考虑到线程隔离带来的优势，这样的开销对于大多数的接口来说往往是可以接受的。
 ![Alt](img/1561658219178_.pic_hd.jpg)
         
+        信号量隔离
+            如果你的接口响应时间非常小，无法接受线程隔离带来的开销，且信任该接口能够很快返回的话，则可以使用 Semaphore 隔离级别。原因是使用信号量隔离自然就无法像线程隔离一样在出现超时的时候直接返回，而是需要等待客户端的阻塞结束。 在 Hystrix 中，command 的执行以及 Fallback 都支持使用 Semaphore。将 execution.isolation.strategy 配置为 SEMAPHORE 即可将默认的 THREAD 隔离级别改为信号量隔离。根据接口的响应时间以及单位时间内的调用次数，你可以根据和计算线程数相似的方式计算出可允许并发执行的数量。
         
-        
-        
-        
+        具体实现
+            Command 在初始化时，会向 HystrixThreadPool.Factory 工厂类传入自身的 ThreadPoolKey (默认为 groupKey)。一个 ThreadPoolKey 对应一个线程池，工厂会先在 ConcurrentHashMap 缓存中检查是否已经创建，如果已经创建就直接返回，如果没有则进行创建。
         
         
         
