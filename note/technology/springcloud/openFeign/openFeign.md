@@ -22,7 +22,10 @@
         构造新的BeanDefinition，传入FeignClientFactoryBean的class，随后注入到spring容器中；同时有配置类的也会将配置类构件出一个bean class
         为FeignClientSpecification的BeanDefinition注入到spring容器中。
 ![](img/1241657695714_.pic.jpg)            
-    
+
+    链路总结: @EnableFeignClients -> FeignClientsRegistrar 扫描 @Feign注解的类 -> FeignClientFactoryBean通过Targeter生产FeignClient -> Targeter通过Feign.Builder构建Feign -> Feign.Builder
+
+
 Feign客户端接口动态代理生成源码剖析
 
     FeignAutoConfiguration类分析
@@ -110,6 +113,12 @@ Feign客户端接口动态代理生成源码剖析
                         newInstance方法通过Target拿到接口的类型，然后获取到所有的方法，遍历每个方法，处理之后放入methodToHandler中，然后通过InvocationHandlerFactory的create方法，传入methodToHandler
                             和Target，获取到一个InvocationHandler，之后通过jdk的动态代理，生成一个代理对象，然后返回回去。InvocationHandler默认是ReflectiveFeign.FeignInvocationHandler
 ![](img/1251657704995_.pic.jpg)
+    总结:获得目标
+        1. 获得FeignContext
+        2. 从FeignContext中获得Feign构建器Feign.Builder
+        3. 从FeignContext中获得Client，判断是否进行负载均衡
+        4. 从FeignContext中获得Target，并执行Target的默认方法target(FeignClientFactoryBean, Feign.Builder, FeignContext, Target.HardCodedTarget<T>);
+        5.由于一开始注入的Feign.Builder是HystrixFeign.Builder,则此处是调用HystrixFeign.Builder里的对应方法
 
 Feign动态代理调用实现rpc流程分析
 

@@ -19,7 +19,7 @@ Hystrix 具备如下特性：
     优雅降级
     实时的监控、警报、配置
     2018 Hystrix 正式进入维护阶段，不再添加新的功能，并推荐新的项目使用受 Hystrix 启发，更加轻量、更多采用函数式调用的 resilience4j。
-
+![流程图](img/img_3.png)
 源码分析:
 
     @EnableHystrix 要是用Hystrix需要加上@EnableHystrix注解
@@ -53,7 +53,8 @@ Hystrix 具备如下特性：
                                                 if (commandState.get().equals(CommandState.UNSUBSCRIBED)) {
                                                     return Observable.never();
                                                 }
-                                                return applyHystrixSemantics(_cmd);//这里就是Hystrix的核心逻辑所在,AbstractCommand#applyHystrixSemantics
+                                                //这里就是Hystrix的核心逻辑所在,AbstractCommand#applyHystrixSemantics,在下面单独解析
+                                                return applyHystrixSemantics(_cmd);
                                             }
                                         };
                         return result
@@ -103,48 +104,27 @@ Hystrix核心方法applyHystrixSemantics解析
     总结: 比如熔断器开启，线程池，信号量都满了，则会走到降级方法,也是会反射调用到 fallback 方法，fallback 降级方法也是有信号量和线程池的大小控制的，也就是信号量或线程池是多少大小，
         fallback 降级方法也会接收多少降级的请求。如果调用降级方法的信号量或线程池 都满了，则抛出响应的异常信息
 
+隔离线程池创建的地方
 
+    HystrixCommand的父类AbstractCommand有个构造方法，从构造方法可以看出里这里定义了 threadPool对象。
+        this.threadPool = initThreadPool(threadPool, this.threadPoolKey, threadPoolPropertiesDefaults);
+            HystrixThreadPool.Factory.getInstance(threadPoolKey, threadPoolPropertiesDefaults);
+                先从缓存中取,如果是第一次(缓存中没有)则进行创建,创建是new HystrixThreadPoolDefault()
+                     this.metrics = HystrixThreadPoolMetrics.getInstance(threadPoolKey,
+                            concurrencyStrategy.getThreadPool(threadPoolKey, properties),properties);  
+                        HystrixConcurrencyStrategy#getThreadPool//此方法中就是利用ThreadPoolExecutor对象来构造线程池。 里面需要传入核心线程池的大小，最大线程数，队列等关键信息。
+Hystrix熔断源码分析
 
-
-            HystrixCommandAspect中有块静态代码,里面放的是不同类型对应的MetaHolder的Factory：
-                META_HOLDER_FACTORY_MAP = ImmutableMap.builder()
-                                            .put(HystrixCommandAspect.HystrixPointcutType.COMMAND, new HystrixCommandAspect.CommandMetaHolderFactory())
-                                            .put(HystrixCommandAspect.HystrixPointcutType.COLLAPSER, new HystrixCommandAspect.CollapserMetaHolderFactory()).build();
-                CommandMetaHolderFactory和CollasperMetaHolderFactory都是继承了 抽象类MetaHolderFactory，作用就是 根据不同的类型创建一个MetaHolder ，MetaHolder 里面包含了当前方法 所需的各种必要信息 。
-                以CommandMetaHoldFactory为例，分析其create方法：
-                     public MetaHolder create(Object proxy, Method method, Object obj, Object[] args, ProceedingJoinPoint joinPoint) {
-                        HystrixCommand hystrixCommand = (HystrixCommand)method.getAnnotation(HystrixCommand.class);//获取@HystrixCommand注解的属性
-                        //根据方法的返回类型判断是同步还是异步的，这里有三种方式 同步(SYNCHRONOUS)，异步(ASYNCHRONOUS)，响应式(OBSERVABLE) 如果是 Future.class返回类型的为异步，如果是 (Observable.class, Single.class, Completable.class) 这三种类型中一种，为OBSERVABLE ，剩下的类型为 同步方式
-                        ExecutionType executionType = ExecutionType.getExecutionType(method.getReturnType());
-                        Builder builder = this.metaHolderBuilder(proxy, method, obj, args, joinPoint);
-                        if (EnvUtils.isCompileWeaving()) {
-                            builder.ajcMethod(HystrixCommandAspect.getAjcMethodFromTarget(joinPoint));
-                        }
-                        构建MetaHolder，将各种必须参数填入MetaHolder对象中，同时获取指定的FallBackMethod并进行填充，并对FallbackMethod进行校验
-                        return builder.defaultCommandKey(method.getName())
-                                .hystrixCommand(hystrixCommand)
-                                .observableExecutionMode(hystrixCommand.observableExecutionMode())
-                                .executionType(executionType)
-                                .observable(ExecutionType.OBSERVABLE == executionType).build();
-                    }
-
-
-                    Builder metaHolderBuilder(Object proxy, Method method, Object obj, Object[] args, ProceedingJoinPoint joinPoint) {
-                    Builder builder = MetaHolder.builder().args(args).method(method).obj(obj).proxyObj(proxy).joinPoint(joinPoint);
-                    HystrixCommandAspect.setFallbackMethod(builder, obj.getClass(), method);
-                    builder = HystrixCommandAspect.setDefaultProperties(builder, obj.getClass(), joinPoint);
-                    return builder;
-                    }
-            
-
-
-
-
-
-
-
-
-
+    HystrixCommand的父类AbstractCommand有个构造方法，从构造方法可以看出里这里定义了 circuitBreaker对象。
+        this.circuitBreaker = initCircuitBreaker(this.properties.circuitBreakerEnabled().get(), circuitBreaker, this.commandGroup, this.commandKey, this.properties, this.metrics);
+            只有开了熔断器开关之后才会通过HystrixCircuitBreaker.Factory.getInstance(commandKey, groupKey, properties, metrics);创建熔断器
+                创建时先从缓存取, 取不到,再进行创建
+                HystrixCircuitBreaker cbForCommand = circuitBreakersByCommand.putIfAbsent(key.name(), new HystrixCircuitBreakerImpl(key, group, properties, metrics));
+                    HystrixCircuitBreakerImpl 类里定义了一个状态变量，断路由有三种状态 ，分别为关闭，打开，半开状态。重点方法是allowRequest和attemptExecution
+                        allowRequest:首先判断forceOpen属性是否打开，如果打开则不允许有请求进入，然后forceClosed属性，如果这个属性为true,刚对所有的求求放行，相当于熔断器不起作用。
+                            之后就是状态判断了。isAfterSleepWindow（）方法用于放行超过了指定时间后的流量。
+                        circuitBreaker.attemptExecution()//是否允许接收请求,在上面的方法有解析
+![类图](img/img.png)
 
 ![Hystrix 的执行流程](img/1501658209681_.pic_hd.jpg)
 
@@ -250,10 +230,6 @@ Hystrix核心方法applyHystrixSemantics解析
                 }
                 假设这里由于错误率太高，断路器打开，那么在用户配置的休眠窗口内 (circuitBreakerSleepWindowInMilliseconds)，它将持续拒绝进入的请求。过了这个窗口，则在下一个请求进入时将状态修改为 HALF_OPEN，具体执行逻辑在 attemptExecution 方法内:
                 if (isAfterSleepWindow()) {
-                    //only the first request after sleep window should execute
-                    //if the executing command succeeds, the status will transition to CLOSED
-                    //if the executing command fails, the status will transition to OPEN
-                    //if the executing command gets unsubscribed, the status will transition to OPEN
                     if (status.compareAndSet(Status.OPEN, Status.HALF_OPEN)) {
                         return true;
                     } else {
@@ -353,7 +329,7 @@ Hystrix核心方法applyHystrixSemantics解析
                 }
             2.断路器的状态变化缺少一定的通知机制。HystrixPlugins 里面的 EventNotifier 可以对断开的时间作通知，但是我们希望能够对恢复的事件也作通知，把断路器的状态变化接入到我们的预警系统中。
                 创建了一个 Observable 订阅流负责存储断路器状态变更的事件，在断路器状态发生变化时写入。在此之上实现 Callback 机制，可以让用户为某个 Command 注册 callback，对该 command 的事件进行订阅，并通过 composition 的方式实现多层订阅。
-        
+
     隔离机制 Isolation
     
         Hystrix 使用 Bulkhead 模式提供容错功能。简单来说，就是把系统依赖但是却互相不相关的服务调用所使用到的资源隔离开，这样在一个下游服务故障的时候，不会导致整个服务的资源都被占据。
@@ -382,13 +358,41 @@ Hystrix核心方法applyHystrixSemantics解析
         
         具体实现
             Command 在初始化时，会向 HystrixThreadPool.Factory 工厂类传入自身的 ThreadPoolKey (默认为 groupKey)。一个 ThreadPoolKey 对应一个线程池，工厂会先在 ConcurrentHashMap 缓存中检查是否已经创建，如果已经创建就直接返回，如果没有则进行创建。
-        
-        
-        
-        
-        
-        
-        
-        
-        
 
+Hystrix降级处理
+    
+    所谓降级，就是指在在Hystrix执行非核心链路功能失败的情况下，我们如何处理，比如我们返回默认值等。如果我们要回退或者降级处理，
+        代码上需要实现HystrixCommand.getFallback()方法或者是HystrixObservableCommand. resumeWithFallback()。
+        
+断路器3种状态切换
+![Alt](img/img_1.png)
+
+    断路器初始是Closed状态，如果调用持续出错或者超时，断路器会进入Open状态，熔断请求，后续的一段时间内所有的调用都会触发fallback
+    Open 状态：请求不再进行调用当前服务，内部设置时钟一般为MTTR（平均故障处理时间），当打开时长达到所设时钟则进入半熔断状态
+    Closed 关闭：路器器关闭不会对服务进行熔断部分请求
+    Half Open 半开：根据规则调用当前服务，如果请求成功且符合规则则认为当前服务恢复正常，关闭熔断
+![Alt](img/img_2.png)
+        
+    断路器是以commandKey为维度
+    断路器是打开状态，直接熔断
+    在窗口期内，如果请求的量大于设置的值，熔断（默认是10秒超过20个请求）
+    如果异常率大于配置的值，熔断（默认是10秒超过50%的失败）
+    一段时间之后，这个断路器是掰开状态，会允许一个请求进来，如果成功，断路器会关闭
+
+    同时，在hystrix-core的jar包com.netflix.hystrix.metric.consumer下，有很多的HystrixEvent的消费流，这些根据配置执行不同的限流手段，
+        有滑动窗口，有令牌桶，这些流都会在HystrixCommandMetrics实例化的时候启动。如果想了解这一块可以看下HystrixConfigurationStream和
+        HystrixCommandMetrics。
+
+现有类似功能组件对比
+![](img/img_4.png)
+
+    默认策略为：在10秒内，发生20次以上的请求时，假如错误率达到50%以上，则断路器将被打开。（当一个窗口期过去的时候，断路器将变成半开（HALF-OPEN）状态，如果这时候发生的请求正常，则关闭，否则又打开）
+
+请求合并
+
+    通过使用HystrixCollapser可以实现合并多个请求批量执行。使用请求合并可以减少线程数和并发连接数，并且不需要使用这额外的工作。
+    请求合并有两种作用域，全局作用域会合并全局内的同一个HystrixCommand请求，请求作用域只会合并同一个请求内的同一个HystrixCommand请求。但是请求合并会增加请求的延时。
+![](img/img_5.png)
+![](img/img_6.png)
+
+[请求合并源码](https://www.iocoder.cn/Hystrix/command-collapser-execute/)
