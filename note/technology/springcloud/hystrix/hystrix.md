@@ -101,6 +101,15 @@ Hystrix核心方法applyHystrixSemantics解析
                                     executeWithArgs//该方法又调用return execute(object, method, args);里面是利用反射调用业务方法
                 如果执行线程的线程池满了的话就走降级方法, 这个就是线程池的处理了.
     如果是不允许接收请求,则调用handleShortCircuitViaFallback,里面调用getFallbackOrThrowException走降级方法
+        getFallbackOrThrowException中最后
+            return fallbackExecutionChain.doOnEach(setRequestContext)
+            .lift(new FallbackHookApplication(_cmd)) //里面封装了onCompleted 会调用HystrixCommandExecutionHook#onFallbackSuccess, onError会调用HystrixCommandExecutionHook#onError, onNext会调用HystrixCommandExecutionHook#onNext
+            .lift(new DeprecatedOnFallbackHookApplication(_cmd))里面封装了onCompleted 会调用HystrixCommandExecutionHook#onCompleted, onError会调用HystrixCommandExecutionHook#onError, onNext会调用HystrixCommandExecutionHook#onNext
+            .doOnNext(markFallbackEmit)
+            .doOnCompleted(markFallbackCompleted)
+            .onErrorResumeNext(handleFallbackError)
+            .doOnTerminate(singleSemaphoreRelease)
+            .doOnUnsubscribe(singleSemaphoreRelease);
     总结: 比如熔断器开启，线程池，信号量都满了，则会走到降级方法,也是会反射调用到 fallback 方法，fallback 降级方法也是有信号量和线程池的大小控制的，也就是信号量或线程池是多少大小，
         fallback 降级方法也会接收多少降级的请求。如果调用降级方法的信号量或线程池 都满了，则抛出响应的异常信息
 
