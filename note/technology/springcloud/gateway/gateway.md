@@ -2,7 +2,7 @@ https://blog.csdn.net/qq_45076180/article/details/117112434
 
 [网关做统一认证jwt鉴权示例](https://blog.csdn.net/weixin_43296313/article/details/121126811)
 [GateWay路由及统一过滤器处理](https://blog.csdn.net/weixin_62661659/article/details/124403015)
-[源码解析,里面还有限流的整合](https://www.iocoder.cn/categories/Spring-Cloud-Gateway/)
+[源码解析,里面还有限流过滤器的整合](https://www.iocoder.cn/categories/Spring-Cloud-Gateway/)
 
 网关在微服务中的位置
 ![](img/img_4.png)
