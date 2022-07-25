@@ -54,8 +54,18 @@ J2EE 模式-->对象合起来要干嘛（表现层,文中表示层个人感觉�
 
     原本类: 中国教练  中国球员  外国球员    
     场景: 中国教练对球员说战术,球员根据战术做行动,只有中国球员能听懂,外国球员听不懂,就需要一个翻译人员  
-        此场景中中国教练就是调用方,希望被调用的对象是中国球员,外国球员是被适配的, 翻译人员就是适配器
-        适配器是实现中国球员才能接收教练的战术, 适配器又是翻译给外国球员的,所以要持有外国队员的成员变量,然后翻译的时候调用外国队员的行动方法
+        此场景中中国教练就是调用方,希望被调用的对象是中国球员,外国球员是被适配的, 翻译人员就是适配器,
+        说白了适配器就是一个包装委派,需求是中国教练调用球员(中国 or 外国)执行命令方法,但是中国教练无法直接调用外国球员的执行命令方法,于是就把外国球员包装成中国球员,这就涉及到了几个关系:
+            教练:调用者,  中国球员:ChinesePlayer,  外国球员:ForeignPlayer   
+            包装类(适配器类): ChinesePlayerAdapter implements ChinesePlayer,  将外国球员包装成中国球员,然后该类代码大致如下:
+                private final ForeignPlayer delegate;//委派给外国球员
+                ChinesePlayerAdapter(ForeignPlayer delegate) {
+                    this.delegate = delegate;
+                }
+                @Override
+                public void exeCommand() {//将执行命令的方法委派给外国球员,调用外国球员执行命令的方法
+                    return this.delegate.exeComm();
+                }
 
 [DECORATOR 装饰器](https://www.runoob.com/design-pattern/decorator-pattern.html)
 
