@@ -208,6 +208,63 @@ FlowSlot:滑动时间窗口算法
     滑动时间窗口的功能分两部分来看：
         一是时间区间窗口的QPS计数功能，这个是在StatisticSlot中调用的
         二是对滑动窗口内的时间区间窗口QPS累加，这个是在FlowRule中调用的
+    在StatisticSlot#entry方法里会同时对DefaultNode和ClusterNode在做QPS,DefaultNode和ClusterNode都是StatisticNode的子类，这里调用addPassRequest()方法，最终都会进入StatisticNode中。
+        这里有秒、分两种纬度的统计，对应两个计数器。两个计数器都是ArrayMetric(int sampleCount, int intervalInMs); 
+            intervalInMs：是滑动窗口的时间间隔，默认为 1 秒,  sampleCount: 时间窗口的分隔数量，默认为 2，就是把 1秒分为 2个小时间窗(大概就是每500ms算是一个统计区间)
+                rollingCounterInSecond.addPass(count);
+                rollingCounterInMinute.addPass(count);
+            addPass(count);//方法
+                WindowWrap<MetricBucket> wrap = data.currentWindow();// 获取当前时间所在的时间窗
+                wrap.value().addPass(count);// 计数器 +1
+                当前时间所在的时间窗说明:data.currentWindow();这里的data是LeapArray
+                    LeapArray是一个环形数组，因为时间是无限的，数组长度不可能无限，因此数组中每一个格子放入一个时间窗（window），当数组放满后，角标归0，覆盖最初的window。
+![](img/img_10.png)
+
+    FlowSlot的限流判断最终都由 TrafficShapingController 接口中的canPass方法来实现。该接口有三个实现类：
+        DefaultController：快速失败，默认的方式，基于滑动时间窗口算法
+        WarmUpController：预热模式，基于滑动时间窗口算法，只不过阈值是动态的
+        RateLimiterController：排队等待模式，基于漏桶算法
+
+
+数据统计源码解析
+![](img/img_11.png)
+
+使用统计数据源码
+![](img/img_12.png)
+
+
+规则配置:
+    
+    在实际的项目中，规则应该需要支持动态配置。这就需要有一个规则配置源，它可以是 Redis、ZooKeeper 等数据库，还需要有一个规则变更通知机制和规则配置后台，允许管理人员可以在后台动态配置规则并实时
+    下发到业务服务器进行控制。有一些规则源存储不支持事件通知机制，比如关系数据库，Sentinel 也提供了定时刷新规则，比如每隔几秒来刷新内存里面的限流规则。
+![](img/img_13.png)
+
+健康状态上报与检查:
+    
+    Sentinel 使用拉模型来上报状态，它在当前进程注册了一个 HTTP 服务，Dashboard 会定时来访问这个 HTTP 服务来获取每个服务进程的健康状况和限流信息。
+    Sentinel 需要将服务的地址以心跳包的形式上报给 Dashboard，如此 Dashboard 才知道每个服务进程的 HTTP 健康服务的具体地址。如果进程下线了，心跳包就停止了，
+        那么对应的地址信息也会过期，如此Dashboard 就能准实时知道当前的有效进程服务列表。
+    当前版本开源的 Dashboard 不具备持久化能力，当管理员在后台修改了规则时，它会直接通过 HTTP 健康服务地址来同步服务限流规则直接控制具体服务进程。如果应用重启，规则将自动重置。
+        如果你希望通过 Redis 来持久化规则源，那就需要自己定制 Dashboard。定制不难，实现它内置的持久化接口即可。
+![](img/img_14.png)
+
+分布式限流
+
+    分布式限流需要另起一个 Ticket Server，由它来分发 Ticket，能够获取到 Ticket 的请求才可以允许执行临界区代码，Ticket 服务器也需要提供规则输入源。
+    Ticket Server 是单点的，如果 Ticket Server 挂掉了，应用服务器限流将自动退化为本地模式。
+![](img/img_15.png)
+
+框架适配
+
+    Sentinel 保护的临界区是代码块，通过拓展临界区的边界就可以直接适配各种框架，比如 Dubbo、SpringBoot 、GRPC 和消息队列等。每一种框架的适配器会在请求边界处统一定义临界区作用域，
+    用户就可以完全不必手工添加熔断保护性代码，在毫无感知的情况下就自动植入了限流保护功能。
+
+系统自适应限流 —— 过载保护
+
+    当系统的负载较高时，会启动自我保护,保护的方式是逐步限制 QPS，观察到系统负载恢复后，再逐渐放开 QPS，如果系统的负载又下降了，就再逐步降低 QPS。
+
+
+
 
 
 
