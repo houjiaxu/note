@@ -264,6 +264,58 @@ FlowSlot:滑动时间窗口算法
     当系统的负载较高时，会启动自我保护,保护的方式是逐步限制 QPS，观察到系统负载恢复后，再逐渐放开 QPS，如果系统的负载又下降了，就再逐步降低 QPS。
 
 
+扩展点分析
+
+![模块结构以及相互关系](img/img_16.png)
+
+    sentinel-dashboard：一个通过 spring boot 实现的 web 应用，相当于是 Sentinel 的 OPS 工具，通过 dashboard 我们可以更方便的对规则进行调整、查询实时统计信息等，但是这并不是必须的，
+        没有 dashboard 我们也能使用 Sentinel，甚至我们可以通过 Sentinel 提供的 api 来实现自己的 dashboard。
+    sentinel-transport：一个 sentinel-core 和 sentinel-dashboard 通讯的桥梁，如果我们的应用接入了 Sentinel，并且也想通过 dashboard 来管理的话，那就需要引入 sentinel-transport 模块。
+    sentinel-extension：一个 Sentinel 的扩展模块，主要是实现了规则的动态更新和持久化。另外热点参数限流也在这里实现的，除此之外注解的相关实现也是在这个模块中。
+    sentinel-adapter：一个适配器的扩展，通过适配器可以很方便的为其他框架进行 Sentinel 的集成。
+    sentinel-cluster：集群限流的扩展，通过引入这个模块可以在集群环境中使用 Sentinel。
+
+扩展点之系统初始化 InitFunc
+    
+    Sentinel提供InitFunc接口供系统初始化，如果我们需要在系统初始化时做一些事情可以实现这个接口。这是一个SPI接口。
+    调用的源码在Env 有个静态代码块,里面调用了InitExecutor.doInit();
+        List<InitFunc> initFuncs = SpiLoader.of(InitFunc.class).loadInstanceListSorted();//SPI读取InitFunc接口的实现，基于@InitOrder注解排序，排序后执行init方法。
+        func.init();//排序包装后,循环initFuncs调用init方法
+            Sentinel已实现的有如下几个：
+                CommandCenter 的初始化
+                HeartBeat 的初始化与心跳发送
+                集群服务端和客户端的初始化
+                热点限流中 StatisticSlot 回调的初始化
+
+扩展点之规则持久化   
+
+    ReadableDataSource：读数据源负责监听持久化的数据源的变更，在接收到变更事件时将最新的数据更新
+    WritableDataSource：写数据源负责将变更后的规则写入到持久化的数据源中
+    目前系统中只有一种文件数据源实现了 WritableDataSource 接口，其他的数据源只实现了 ReadableDataSource 接口。这部分Sentinel已经实现了，基本不需要有什么修改。
+
+    FlowRuleManager#loadRules 方法,实际就是动态更新规则的
+        currentProperty.updateValue(rules);//实际调用DynamicSentinelProperty#updateValue 
+    只需要实现监听每种持久化的数据源在发生数据变更时的事件，当接收到最新的数据时将它 update 进 FlowRuleManager 中即可。会通过触发 SentinelProperty 的 updateValue 方法把更新后的规则注入进去。
+![](img/img_17.png)
+
+扩展点之网络通信
+
+     sentinel-transport-common 模块中抽象了3个接口作为扩展点：
+        CommandCenter：该接口主要用来在 sentinel-core 中启动一个可以对外提供 api 接口的服务端，Sentinel 中默认有两个实现，分别是 http 和 netty。但是官方默认推荐的是使用 http 的实现。
+        CommandHandler：该接口主要是用来处理接收到的请求的，不同的请求有不同的 handler 类来进行处理，我们可以实现我们自己的 CommandHandler 并注册到 SPI 配置文件中来为 CommandCenter 添加自定义的命令。
+        HeartbeatSender：该接口主要是为 sentinel-core 用来向 sentinel-dashboard 发送心跳的，默认也有两个实现，分别是 http 和 netty。
+![](img/img_18.png)
+
+扩展点之Slot链生成器
+
+    SPI接口SlotChainBuilder，默认使用DefaultSlotChainBuilder构造器，可以自定义SlotChainBuilder的实现来构造SlotChain
+    自定义Slot:SPI接口ProcessorSlot，有默认8个实现,我们可以自定义ProcessorSlot的实现，并设置@SpiOrder合适的值已达到插入自定义Slot的效果
+
+扩展点之StatisticSlot回调
+
+    ProcessorSlotEntryCallback:包含 onPass 和 onBlocked 两个回调函数，分别对应着请求在 pass 和 blocked 的时候执行。
+    ProcessorSlotExitCallback:包含 onExit 回调函数，对应着请求在 exit 的时候执行。
+    可以自定义接口实现，并通过StatisticSlotCallbackRegistry的addEntryCallback或addExitCallback方法注册自定义回调。
 
 
 
@@ -272,3 +324,5 @@ FlowSlot:滑动时间窗口算法
 
 
 
+
+    
