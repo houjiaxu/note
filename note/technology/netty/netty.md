@@ -1,5 +1,7 @@
 [深度解析 Netty 架构与原理](https://mp.weixin.qq.com/s?__biz=MzI5MTU1MzM3MQ%3D%3D&chksm=ec0fb874db783162d60a288a1b4e4ef008852d773693a77bfc58608fae380fd0a14a40e96195&idx=1&mid=2247487808&scene=21&sn=043e5e674b798d0f02d13639cba547b6#wechat_redirect)
 
+##Netty基础:
+
 基础:
 
     Java 的 IO 编程经验, Java 的各种 IO 流
@@ -41,7 +43,7 @@ selector模型:selector是多路复用器,可以轮训读取多个channel的数�
 
 Reactor与Proactor模式: 这2中模式是指的java Nio与Aio的工作模式
 
-    Java NIO工作模式是：主动轮训 IO 事件，IO 事件发生后程序的线程主动处理 IO 工作，这种模式也叫做 Reactor 模式。
+    Java NIO工作模式是：主动轮训 IO 事件，IO 事件发生后程序的线程主动处理 IO 工作，这种模式也叫做 Reactor 模式。也叫做 Dispatcher 模式，分派模式.
     Java AIO工作模式是：将 IO 事件的处理托管给操作系统，操作系统完成 IO 工作之后会通知程序的线程去处理后面的工作，这种模式叫 Proactor 模式。
 
 阻塞和同步：阻塞是请求是否等待, 同步是接收到请求后服务端的处理
@@ -64,15 +66,131 @@ Reactor与Proactor模式: 这2中模式是指的java Nio与Aio的工作模式
     当连接上真正有读写等事件发生时，线程才会去进行读写等操作，这就不必为每个连接都创建一个线程，一个线程可以应对多个连接。这就是 IO 多路复用的要义。
     Netty 的 IO 线程 NioEventLoop 聚合了 Selector，可以同时并发处理成百上千的客户端连接
 
-零拷贝技术:
+零拷贝技术:Linux 系统下的 IO 过程才有零拷贝的技术,在“将本地磁盘中文件发送到网络中”这一场景中，零拷贝技术是提升 IO 效率的一个利器
+下面对比直接 IO 技术、内存映射文件技术、零拷贝技术 将本地磁盘文件发送到网络中的过程。
+
+    1.直接IO技术: 读进来两次，写回去又两次：磁盘-->内核缓冲区-->Socket 缓冲区-->网络。
+
+    内核缓冲区是 Linux 系统的 Page Cache。为了加快磁盘的 IO，Linux 系统会把磁盘上的数据以 Page 为单位缓存在操作系统的内存里，这里的 Page 是 Linux 系统定义的一个逻辑概念，一个 Page 一般为 4K。
+![](img/img_2.png)
+
+    2.内存映射文件技术: 整个过程有三次数据拷贝，不再经过应用程序内存，直接在内核空间中从内核缓冲区拷贝到 Socket 缓冲区。
+![](img/img_3.png)
+
+    3.零拷贝技术: 内核缓冲区到 Socket 缓冲区之间并没有做数据的拷贝，只是一个地址的映射。底层的网卡驱动程序要读取数据并发送到网络上的时候，看似读取的是 Socket 的缓冲区中的数据，其实直接读的是内核缓冲区中的数据。
+    零拷贝中所谓的“零”指的是内存中数据拷贝的次数为 0。在 JDK 中提供的api是：FileChannel.transderTo();
+![](img/img_4.png)
 
 
+##Netty 的架构与原理
+
+为什么要制造 Netty? 既然 Java 提供了 NIO，为什么还要制造一个 Netty?
+
+    1）Java NIO 的类库和 API 庞大繁杂，使用起来很麻烦，开发工作量大。
+    2）使用 Java NIO，程序员需要具备高超的 Java 多线程编码技能，以及非常熟悉网络编程，
+        比如要处理断连重连、网络闪断、半包读写、失败缓存、网络拥塞和异常流处理等一系列棘手的工作。
+    3）Java NIO 存在 Bug，例如 Epoll Bug 会导致 Selector 空轮训，极大耗费 CPU 资源。
+    4) Netty 对于 JDK 自带的 NIO 的 API 进行了封装，解决了上述问题，提高了 IO 程序的开发效率和可靠性
+
+Netty除了JAVA NIO之外的其他功能:
+
+    1）设计优雅，提供阻塞和非阻塞的 Socket；提供灵活可拓展的事件模型；提供高度可定制的线程模型。
+    2）具备更高的性能和更大的吞吐量，使用零拷贝技术最小化不必要的内存复制，减少资源的消耗。
+    3）提供安全传输特性。
+    4）支持多种主流协议；预置多种编解码功能，支持用户开发私有协议。
+    5) Netty 的强大之处：零拷贝、可拓展事件模型；支持 TCP、UDP、HTTP、WebSocket 等协议；提供安全传输、压缩、大文件传输、编解码支持等等。
+![](img/img_5.png)
 
 
+##几种 Reactor线程模式: 单 Reactor 单线程模式、单 Reactor 多线程模式、主从 Reactor 多线程模式。
 
+1.BIO 服务端编程采用的是 Reactor 模式（也叫做 Dispatcher 模式，分派模式），Reactor 模式有两个要义：
 
+    1）基于 IO 多路复用技术，多个连接共用一个多路复用器，应用程序的线程无需阻塞等待所有连接，只需阻塞等待多路复用器即可。当某个连接上有新数据可以处理时，应用程序的线程从阻塞状态返回，开始处理这个连接上的业务。
+    2）基于线程池技术复用线程资源，不必为每个连接创建专用的线程，应用程序将连接上的业务处理任务分配给线程池中的线程进行处理，一个线程可以处理多个连接的业务。
+![](img/img_6.png)
+这个图和selector模型的图是啥关系? 一般情况下,selector用来监听客户端请求, 然后交给EventDispatch进行转发,
+在这个图的ServiceHandler前面再添加一个selector模块, 请求事件链接到selector,selector链接到ServiceHandler模块就好理解了.
 
+    Reactor 模式有两个核心组成部分：
+        1）Reactor（图中的 ServiceHandler）：Reactor 在一个单独的线程中运行，负责监听和分发事件，分发给适当的处理线程来对 IO 事件做出反应。
+        2）Handlers（图中的 EventHandler）：处理线程执行处理方法来响应 I/O 事件，处理线程执行的是非阻塞操作。
 
+单 Reactor 单线程模式:指处理线程只有1个
+![](img/img_7.png)
+
+    基本工作流程
+        1）Reactor 通过 select 监听客户端请求事件，收到事件之后通过 dispatch 进行分发
+        2）如果事件是建立连接的请求事件，则由 Acceptor 通过 accept 处理连接请求，然后创建一个 Handler 对象处理连接建立后的后续业务处理。
+        3）如果事件不是建立连接的请求事件，则由 Reactor 对象分发给连接对应的 Handler 处理。
+        4）Handler 会完成 read-->业务处理-->send 的完整处理流程。
+    优点：模型简单，没有多线程、进程通信、竞争的问题，一个线程完成所有的事件响应和业务处理
+    缺点：1）存在性能问题，只有一个线程，无法完全发挥多核 CPU 的性能。Handler 在处理某个连接上的业务时，整个进程无法处理其他连接事件，很容易导致性能瓶颈。
+        2）存在可靠性问题，若线程意外终止，或者进入死循环，会导致整个系统通信模块不可用，不能接收和处理外部消息，造成节点故障。
+        单 Reactor 单线程模式使用场景为：客户端的数量有限，业务处理非常快速，比如 Redis 在业务处理的时间复杂度为 O(1)的情况。
+单 Reactor 多线程模式:指处理线程有多个
+![](img/img_8.png)
+
+    基本工作流程:
+        1）Reactor 对象通过 select 监听客户端请求事件，收到事件后通过 dispatch 进行分发。
+        2）如果事件是建立连接的请求事件，则由 Acceptor 通过 accept 处理连接请求，然后创建一个 Handler 对象处理连接建立后的后续业务处理。
+        3）如果事件不是建立连接的请求事件，则由 Reactor 对象分发给连接对应的 Handler 处理。Handler 只负责响应事件，不做具体的业务处理，
+            Handler 通过 read 读取到请求数据后，会分发给后面的 Worker 线程池来处理业务请求。
+        4）Worker 线程池会分配独立线程来完成真正的业务处理，并将处理结果返回给 Handler。Handler 通过 send 向客户端发送响应数据。
+    优点：可以充分的利用多核 cpu 的处理能力
+    缺点：多线程数据共享和控制比较复杂，一个Reactor 处理所有的事件的监听和响应，在单线程中运行，面对高并发场景还是容易出现性能瓶颈。
+
+主从 Reactor 多线程模式
+![](img/img_9.png)
+![](img/img_10.png)
+
+    基本工作流程:上面2张图的一样,表达的是同一个意思
+        1）Reactor 主线程 MainReactor 对象通过 select 监听客户端连接事件，收到事件后，通过 Acceptor 处理客户端连接事件。
+        2）当 Acceptor 处理完客户端连接事件之后（与客户端建立好 Socket 连接），MainReactor 将连接分配给 SubReactor。
+            （即：MainReactor 只负责监听客户端连接请求，和客户端建立连接之后将连接交由 SubReactor 监听后面的 IO 事件。）
+        3）SubReactor 将连接加入到自己的连接队列进行监听，并创建 Handler 对各种事件进行处理。
+        4）当连接上有新事件发生的时候，SubReactor 就会调用对应的 Handler 处理。
+        5）Handler 通过 read 从连接上读取请求数据，将请求数据分发给 Worker 线程池进行业务处理。
+        6）Worker 线程池会分配独立线程来完成真正的业务处理，并将处理结果返回给 Handler。Handler 通过 send 向客户端发送响应数据。
+        7）一个 MainReactor 可以对应多个 SubReactor，即一个 MainReactor 线程可以对应多个 SubReactor 线程。
+    优点:
+        1）职责明确，MainReactor 线程只需要接收新连接，SubReactor 线程完成后续的业务处理。
+        2）MainReactor 线程只需要把新连接传给 SubReactor 线程，SubReactor 线程无需返回数据。
+        3）多个 SubReactor 线程能够应对更高的并发请求。
+    缺点:编程复杂度较高。但是由于其优点明显，在许多项目中被广泛使用，包括 Nginx、Memcached、Netty 等。
+    扩展: 这种模式也被叫做服务器的 1+M+N 线程模式，即使用该模式开发的服务器包含一个（或多个，1 只是表示相对较少）连接建立线程+M个IO线程
+        +N 个业务处理线程。这是业界成熟的服务器程序设计模式。
+
+##Netty 的设计
+
+    Netty 的设计主要基于主从 Reactor 多线程模式，并做了一定的改进。
+进化过程:
+
+BossGroup 中的线程（可以有多个，图中只画了一个）
+![](img/img_11.png)
+
+添加轮训监听
+![](img/img_12.png)
+
+终极版本
+![](img/img_13.png)
+    
+    工作流程:
+        1）Netty 抽象出两组线程池：BossGroup 和 WorkerGroup，也可以叫做 BossNioEventLoopGroup 和 WorkerNioEventLoopGroup。每个线程池中都有 NioEventLoop 线程。
+            BossGroup 中的线程专门负责和客户端建立连接，WorkerGroup 中的线程专门负责处理连接上的读写。BossGroup 和 WorkerGroup 的类型都是 NioEventLoopGroup。
+        2）NioEventLoopGroup 相当于一个事件循环组，这个组中含有多个事件循环，每个事件循环就是一个 NioEventLoop。
+        3）NioEventLoop 表示一个不断循环的执行事件处理的线程，每个 NioEventLoop 都包含一个 Selector，用于监听注册在其上的 Socket 网络连接（Channel）。
+        4）NioEventLoopGroup 可以含有多个线程，即可以含有多个 NioEventLoop。
+        5）每个 BossNioEventLoop 中循环执行以下三个步骤：
+            5.1）select：轮训注册在其上的 ServerSocketChannel 的 accept 事件（OP_ACCEPT 事件）
+            5.2）processSelectedKeys：处理 accept 事件，与客户端建立连接，生成一个 NioSocketChannel，并将其注册到某个 WorkerNioEventLoop 上的 Selector 上
+            5.3）runAllTasks：再去以此循环处理任务队列中的其他任务
+        6）每个 WorkerNioEventLoop 中循环执行以下三个步骤：
+            6.1）select：轮训注册在其上的 NioSocketChannel 的 read/write 事件（OP_READ/OP_WRITE 事件）
+            6.2）processSelectedKeys：在对应的 NioSocketChannel 上处理 read/write 事件
+            6.3）runAllTasks：再去以此循环处理任务队列中的其他任务
+        7）在以上两个processSelectedKeys步骤中，会使用 Pipeline（管道），Pipeline 中引用了 Channel，即通过 Pipeline 可以获取到对应的 Channel，Pipeline 中维护了
+            很多的处理器（拦截处理器、过滤处理器、自定义处理器等）。这里暂时不详细展开讲解 Pipeline。
 
 
 

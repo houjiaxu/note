@@ -29,7 +29,7 @@ public static void main(String[] args) throws IOException {
                 if (selectionKey.isAcceptable()) {
                     SocketChannel socketChannel = serverSocketChannel.accept();
                     // 将 socketChannel 也注册到 selector，关注 OP_READ事件，并给 socketChannel 关联 Buffer
-                    //这一步为啥又注册上了,不明白
+                    //这一步注册到子reactor上.
                     socketChannel.register(selector, SelectionKey.OP_READ, ByteBuffer.allocate(1024));
                 }
 
