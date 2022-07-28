@@ -192,6 +192,102 @@ BossGroup 中的线程（可以有多个，图中只画了一个）
         7）在以上两个processSelectedKeys步骤中，会使用 Pipeline（管道），Pipeline 中引用了 Channel，即通过 Pipeline 可以获取到对应的 Channel，Pipeline 中维护了
             很多的处理器（拦截处理器、过滤处理器、自定义处理器等）。这里暂时不详细展开讲解 Pipeline。
 
+##Netty的Handler组件
+
+    无论是服务端代码中自定义的 NettyServerHandler 还是客户端代码中自定义的 NettyClientHandler，都继承于 ChannelInboundHandlerAdapter，
+        ChannelInboundHandlerAdapter extends ChannelHandlerAdapter， ChannelHandlerAdapter implements ChannelHandler
+    
+    Netty 中的 ChannelHandler 的作用是，在当前 ChannelHandler 中处理 IO 事件，并将其传递给 ChannelPipeline 中下一个 ChannelHandler 处理，
+        因此多个 ChannelHandler 形成一个责任链，责任链位于 ChannelPipeline 中。
+
+    数据在基于 Netty 的服务器或客户端中的处理流程是：读取数据-->解码数据-->处理数据-->编码数据-->发送数据。其中的每个过程都用得到 ChannelHandler 责任链。
+![](img/img_14.png)
+
+Netty 中的 ChannelHandler 体系
+![](img/img_15.png)
+
+    ChannelInboundHandler 用于处理入站 IO 事件
+    ChannelOutboundHandler 用于处理出站 IO 事件
+    ChannelInboundHandlerAdapter 用于处理入站 IO 事件
+    ChannelOutboundHandlerAdapter 用于处理出站 IO 事件
+
+    ChannelPipeline 提供了 ChannelHandler 链的容器。以客户端应用程序为例，如果事件的方向是从客户端到服务器的，我们称事件是出站的，那么客户端发送给
+        服务器的数据会通过 Pipeline 中的一系列 ChannelOutboundHandler 进行处理；如果事件的方向是从服务器到客户端的，我们称事件是入站的，那么服务器
+        发送给客户端的数据会通过 Pipeline 中的一系列 ChannelInboundHandler 进行处理。
+![](img/img_16.png)
+
+##Netty 的 Pipeline 组件
+
+    Netty 的 ChannelPipeline维护了一个 ChannelHandler 责任链，负责拦截或者处理 inbound（入站）和 outbound（出站）的事件和操作。
+
+    ChannelPipeline 实现了一种高级形式的拦截过滤器模式，使用户可以完全控制事件的处理方式，以及 Channel 中各个 ChannelHandler 如何相互交互。
+
+    每个 Netty Channel 包含了一个 ChannelPipeline（其实 Channel 和 ChannelPipeline 互相引用），而 ChannelPipeline 又维护了一个由 
+        ChannelHandlerContext 构成的双向循环列表，其中的每一个 ChannelHandlerContext 都包含一个 ChannelHandler。
+        ChannelHandlerContext、ChannelHandler、Channel、ChannelPipeline 这几个组件之间互相引用
+![](img/img_17.png)
+
+    在处理入站事件的时候，入站事件及数据会从 Pipeline 中的双向链表的头 ChannelHandlerContext 流向尾 ChannelHandlerContext
+    出站事件及数据会从 Pipeline 中的双向链表的尾 ChannelHandlerContext 流向头 ChannelHandlerContext
+![](img/img_18.png)
+
+##Netty的EventLoopGroup组件
+
+    在基于 Netty 的 TCP Server 代码中，包含了两个 EventLoopGroup——bossGroup 和 workerGroup，EventLoopGroup 是一组 EventLoop 的抽象。
+    EventLoop 最终继承于 JUC Executor，因此 EventLoop 本质就是一个 JUC Executor，即线程
+    
+    Netty 为了更好地利用多核 CPU 的性能，一般会有多个 EventLoop 同时工作，每个 EventLoop 维护着一个 Selector 实例，Selector 实例监听注册其上的 Channel 的 IO 事件。
+
+    EventLoopGroup 含有一个 next 方法，它的作用是按照一定规则从 Group 中选取一个 EventLoop 处理 IO 事件。
+
+    在服务端，通常 Boss EventLoopGroup 只包含一个 Boss EventLoop（单线程），该 EventLoop 维护者一个注册了 ServerSocketChannel 的 Selector 实例。
+        该 EventLoop 不断轮询 Selector 得到 OP_ACCEPT 事件（客户端连接事件），然后将接收到的 SocketChannel 交给 Worker EventLoopGroup，
+        Worker EventLoopGroup 会通过 next()方法选取一个 Worker EventLoop 并将这个 SocketChannel 注册到其中的 Selector 上，由这个 Worker EventLoop 
+        负责该 SocketChannel 上后续的 IO 事件处理。
+![](img/img_19.png)
+
+##Netty的TaskQueue
+
+    这个想详细看的话就参考文档前面的链接
+    在 Netty 的每一个 NioEventLoop 中都有一个 TaskQueue，设计它的目的是在任务提交的速度大于线程的处理速度的时候起到缓冲作用。
+        或者用于异步地处理 Selector 监听到的 IO 事件。
+    Netty 中的任务队列有三种使用场景：
+        1）处理用户程序的自定义普通任务的时候
+        2）处理用户程序的自定义定时任务的时候
+        3）非当前 Reactor 线程调用当前 Channel 的各种方法的时候。
+
+![](img/img_20.png)
+
+
+##Netty的Future和Promise
+
+    这个想详细看的话就参考文档前面的链接
+    Netty**对使用者提供的多数 IO 接口（即 Netty Channel 中的 IO 方法）**是异步的（即都立即返回一个 Netty Future，而 IO 过程异步进行），因此，
+        调用者调用 IO 操作后是不能直接拿到调用结果的。要想得到 IO 操作结果，可以借助 Netty 的 Future（上面代码中的 ChannelFuture 就继承了 Netty Future，
+        Netty Future 又继承了 JUC Future）查询执行状态、等待执行结果、获取执行结果等，使用过 JUC Future 接口的同学会非常熟悉这个机制，这里不再展开描述了。
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
