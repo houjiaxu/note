@@ -26,9 +26,48 @@ Java中的网络IO模型: BIO、NIO、AIO。
     NIO：同步的、非阻塞式 IO。
         在这种模型中，服务器上一个线程处理多个连接，即多个客户端请求都会被注册到多路复用器（后文要讲的 Selector）上，多路复用器会轮训这些连接，
         轮训到连接上有 IO 活动就进行处理。NIO 降低了线程的需求量，提高了线程的利用率。
+    AIO:异步非阻塞式 IO。在这种模型中，由操作系统完成与客户端之间的 read/write，之后再由操作系统主动通知服务器线程去处理后面的工作，在这个过
+        程中服务器线程不必同步等待 read/write 完成。由于不同的操作系统对 AIO 的支持程度不同，AIO 目前未得到广泛应用。
 
 selector模型:selector是多路复用器,可以轮训读取多个channel的数据,读取到数据之后就可以交给server的线程进行处理,即一个线程可以处理多个请求
-![](img/img.png)
+![](img/img_1.png)
+
+    1.一个 Selector 对应一个处理线程
+    2.一个 Selector 上可以注册多个 Channel
+    3.每个 Channel 都会对应一个 Buffer（有时候一个 Channel 可以使用多个 Buffer，这时候程序要进行多个 Buffer 的分散和聚集操作），Buffer 的本质是一个内存块，底层是一个数组
+    4.Selector 会根据不同的事件在各个 Channel 上切换
+    5.Buffer 是双向的，既可以读也可以写，切换读写方向要调用 Buffer 的 flip()方法
+    6.Channel 也是双向的，数据既可以流入也可以流出
+
+Reactor与Proactor模式: 这2中模式是指的java Nio与Aio的工作模式
+
+    Java NIO工作模式是：主动轮训 IO 事件，IO 事件发生后程序的线程主动处理 IO 工作，这种模式也叫做 Reactor 模式。
+    Java AIO工作模式是：将 IO 事件的处理托管给操作系统，操作系统完成 IO 工作之后会通知程序的线程去处理后面的工作，这种模式叫 Proactor 模式。
+
+阻塞和同步：阻塞是请求是否等待, 同步是接收到请求后服务端的处理
+
+    阻塞：如果线程调用 read/write 过程，但 read/write 过程没有就绪或没有完成，则调用 read/write 过程的线程会一直等待，这个过程叫做阻塞式读写。
+    非阻塞：如果线程调用 read/write 过程，但 read/write 过程没有就绪或没有完成，调用 read/write 过程的线程并不会一直等待，而是去处理其他工作，
+        等到 read/write 过程就绪或完成后再回来处理，这个过程叫做非阻塞式读写。
+
+    异步：read/write 过程托管给操作系统来完成，完成后操作系统会通知（通过回调或者事件）应用网络 IO 程序（其中的线程）来进行后续的处理。
+    同步：read/write 过程由网络 IO 程序（其中的线程）来完成。
+
+缓冲区（Buffer）:缓冲区（Buffer）本质上是一个可读可写的内存块，可以理解成一个容器对象，Channel 读写文件或者网络都要经由 Buffer。在 Java NIO 中，
+    Buffer 是一个顶层抽象类，它的常用子类有（前缀表示该 Buffer 可以存储哪种类型的数据）：ByteBuffer,CharBuffer,ShortBuffer,IntBuffer,
+    LongBuffer,DoubleBuffer,FloatBuffer,涵盖了 Java 中除 boolean 之外的所有的基本数据类型。
+
+通道（Channel）:通道（Channel）是双向的，可读可写。在 Java NIO 中，Buffer 是一个顶层接口，它的常用子类有：FileChannel用于文件读写,
+    DatagramChannel用于 UDP 数据包收发,ServerSocketChannel用于服务端 TCP 数据包收发,SocketChannel用于客户端 TCP 数据包收发
+
+选择器（Selector）:多个 Channel 注册到某个 Selector 上，当 Channel 上有事件发生时，Selector 就会取得事件然后调用线程去处理事件。也就是说只有
+    当连接上真正有读写等事件发生时，线程才会去进行读写等操作，这就不必为每个连接都创建一个线程，一个线程可以应对多个连接。这就是 IO 多路复用的要义。
+    Netty 的 IO 线程 NioEventLoop 聚合了 Selector，可以同时并发处理成百上千的客户端连接
+
+零拷贝技术:
+
+
+
 
 
 
