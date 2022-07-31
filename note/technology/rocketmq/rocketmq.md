@@ -1,4 +1,5 @@
 [RocketMQ](https://baijiahao.baidu.com/s?id=1682264626057308329&wfr=spider&for=pc)
+[参考](https://blog.csdn.net/crazy123456789/article/details/118165367)
 RocketMQ支持事务消息、顺序消息、批量消息、定时消息、消息回溯等
 
 特点:
@@ -140,7 +141,8 @@ Broker的存储:RocketMQ 存储用的是本地文件存储系统，效率高也�
 ![](img/img_6.png)
 
     消息到了先存储到 Commitlog，然后会有一个 ReputMessageService 线程接近实时地将消息转发给消息消费队列文件与索引文件，也就是说是异步生成的。
-
+    每条消息都会有对应的索引信息，Consumer通过ConsumeQueue这个二级索引来读取消息实体内容，其流程如下：
+![](img/img_8.png)
 消息存储过期机制:
 
     RocketMQ追求消息存储的高性能，引入内存映射机制，所有主题的消息顺序存储在同一个文件中。同时为了避免消息无限在消息存储服务器中累积，引入了消息
@@ -224,7 +226,8 @@ RocketMQ的事务消息提供类似 X/Open XA 的分布式事务功能，通过�
         的RPC请求。然后根据RPC返回响应中的反查结果，来决定这个半消息是需要提交还是回滚，或者后续继续来反查。最后，提交或者回滚事务，将半消息标记为已处理状态【将消
         息存储在主题为：RMQ_SYS_TRANS_OP_HALF_TOPIC的主题中，代表这些消息已经被处理（提交或回滚）】。 如果是提交事务，就把半消息从半消息队列中复制到该消息真正
         的topic和queue中； 如果是回滚事务，则什么都不做。
-    注: rocketmq并不会无休止的的信息事务状态回查，默认回查15次，如果15次回查还是无法得知事务状态，rocketmq默认丢弃该消息。
+    注: 1.rocketmq并不会无休止的的信息事务状态回查，默认回查15次，如果15次回查还是无法得知事务状态，rocketmq默认丢弃该消息。
+        2.改变消息主题是RocketMQ的常用“套路”
 
 RocketMQ事务消息使用限制
 
@@ -241,7 +244,7 @@ RocketMQ事务消息使用限制
 
 
 
-https://blog.csdn.net/crazy123456789/article/details/118165367
+
 学智 , 数据库死锁自动释放 是怎么实现的?
 
 
