@@ -27,7 +27,9 @@ Kafka名词解释
     Producer : 生产message发送到topic
     Consumer : 订阅topic消费message, consumer作为一个线程来消费
     Consumer Group：一个Consumer Group包含多个consumer，只有一个consumer能消费到消息, 不能全组的consumer都消费同一个消息
-        不同的消费组可以消费同一个topic,也就是这些消费组都会消费同一个消,会被重复消费
+        不同的消费组可以消费同一个topic,也就是这些消费组都会消费同一个消,会被重复消费;
+        同一个消费组中,只有一个consumer能消费到消息,这么设计的原因是根据偏移量找消息的问题,消费者是知道要根据哪个偏移量来读取下一个消息的,如果多个消费者消费同一个分区,
+            那么比如消费者A从偏移量1024消费了一个消息, 消费者B此时是不知道的,那么B也会从偏移量1024消费消息.
     Zookeeper：kafka集群依赖zookeeper来保存集群的的元信息，来保证系统的可用性。Kafka 可以通过启用 Kafka Raft 元数据 ( KRaft ) 模式在没有它的情况下运行,但是不建议这么做
 
 工作流程分析
@@ -52,7 +54,7 @@ Kafka名词解释
 消费数据:
 
     如果一个topic只有一个消费组订阅, 那么是消费区拉取消息然后消费(点对点),如果是多个消费组订阅同一个topic,那么是broker推送消息到消费组(订阅发布).
-    如果消费者组的消费者多于分区的数量,多出来的消费者不消费任何partition的数据。所以在实际的应用中，建议消费者组的consumer的数量与partition的数量一致！
+    如果消费者组的消费者多于分区的数量,多出来的消费者不消费任何partition的数据。所以在实际的应用中，建议消费者组的consumer的数量与partition的数量一致, 或者分区数量是消费者数量整数倍！
     消费数据查找:
         先找到offset的368801message所在的segment文件（利用二分法查找），这里找到的就是在第二个segment文件。
         打开找到的segment中的.index文件（也就是368796.index文件，该文件起始偏移量为368796+1，我们要查找的offset为368801的message在该index内的偏移量为
@@ -63,6 +65,19 @@ Kafka名词解释
             那每个消费者又是怎么记录自己消费的位置呢？在早期的版本中，消费者将消费到的offset维护zookeeper中，consumer每间隔一段时间上报一次，这里容易导致重复消费，
             且性能不好！在新的版本中消费者消费到的offset已经直接维护在kafk集群的__consumer_offsets这个topic中！
 ![发送数据](img/img_3.png)
+
+分区分配策略:
+
+    RangeAssignor（范围分区）
+        C1-0 将消费 0, 1, 2, 3 分区
+        C2-0 将消费 4, 5, 6 分区
+        C3-0 将消费 7, 8, 9 分区
+    RoundRobinAssignor（轮询分区）
+        C1-0 将消费 0, 2, 4, 6 分区
+        C2-0 将消费 1, 3, 5,  分区
+    StrickyAssignor(粘滞策略) 分配策略
+        它主要有两个目的: 1.分区的分配尽可能的均匀,2.分区的分配尽可能和上次分配保持相同
+
 
 
 应用场景:
@@ -102,21 +117,57 @@ Kafka一些重要设计思想
         或者通过数据库的唯一性约束，或者看是否能判断是插入还是更新。
     消息乱序：kafka多分区之间数据不能保证是有序的。只有单个分区内的数据可以保证有序性。要想保证有序性，可以采用单topic单分区
     不支持事务
+零碎知识点:
+    
+    使用了零拷贝技术
+消息的可靠性:
+    
+    发送到broker: 有ack机制
+    broker:有分区副本,本地持久化文件
+    消费: 可以选择手动提交offset, 这样没有提交的时候,下次消费还是从上个offset消费
+在partition中如何通过offset查找message
 
-消息中间件的对比
-![](img/img_4.png)
+    1. 根据offset的值，查找segment段中的index索引文件。由于索引文件命名是以上一个文件的最后
+       一个offset进行命名的，所以，使用二分查找算法能够根据offset快速定位到指定的索引文件。
+    2. 找到索引文件后，根据offset进行定位，找到索引文件中的符合范围的索引。（kafka采用稀疏索
+       引的方式来提高查找性能）
+    3. 得到position以后，再到对应的log文件中，从position出开始查找offset对应的消息，将每条消息
+       的offset与目标offset进行比较，直到找到消息
+       比如说，我们要查找offset=2490这条消息，那么先找到00000000000000000000.index, 然后找到
+       [2487,49111]这个索引，再到log文件中，根据49111这个position开始查找，比较每条消息的offset是
+       否大于等于2490。最后查找到对应的消息以后返回
+扩展点:
 
-    ActiveMQ：没经过大规模吞吐量场景的验证，社区也不是很活跃。
-    RabbitMQ：erlang 语言本身的并发优势，性能较好，社区活跃度高，比较稳定的支持，但是不利于二次开发，学习成本高。
-    RocketMQ：阿里出品，对于可靠性要求很高的场景，尤其是电商里面的订单扣款，以及业务削峰，在大量交易涌入时，后端可能无法及时处理的情况，但是GitHub上活跃度其实不算高。
-    Kafka：大数据领域的实时计算、日志采集等场景，用 Kafka 是业内标准的，绝对没问题，社区活跃度很高。
+    消息分发机制,默认是根据key进行hash,我们可以根据需要进行扩展producer的partition机制。
+    自定义Partitioner示例:
+        public class MyPartitioner implements Partitioner { 
+            private Random random = new Random(); 
+            @Override
+            public int partition(String s, Object o, byte[] bytes, Object o1, byte[] bytes1, Cluster cluster) { 
+                //获取集群中指定topic的所有分区信息 
+                List<PartitionInfo> partitionInfos=cluster.partitionsForTopic(s); 
+                int numOfPartition=partitionInfos.size(); 
+                int partitionNum=0; 
+                if(o==null){ 
+                    //key没有设置 ,随机指定分区 
+                    partitionNum=random.nextInt(numOfPartition); 
+                }else{
+                    partitionNum=Math.abs((o1.hashCode()))%numOfPartition; 
+                }
+                System.out.println("key->"+o+",value->"+o1+"->send to partition:"+partitionNum); 
+                return partitionNum; 
+            }
+        }
 
-
-
-
-
-
-
-
-
-
+        public KafkaProducerDemo(String topic, boolean isAysnc) {
+            Properties properties = new Properties();
+            properties.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, "192.168.13.102:9092,192.168.13.103:9092,192.168.13.104:9092");
+            properties.put(ProducerConfig.CLIENT_ID_CONFIG, "KafkaProducerDemo");
+            properties.put(ProducerConfig.ACKS_CONFIG, "-1");
+            properties.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.IntegerSerializer");
+            properties.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, "org.apache.kafka.common.serialization.StringSerializer");
+            properties.put(ProducerConfig.PARTITIONER_CLASS_CONFIG, "com.gupaoedu.kafka.MyPa rtitioner");
+            producer = new KafkaProducer<Integer, String>(properties);
+            this.topic = topic;
+            this.isAysnc = isAysnc;
+        }
