@@ -16,6 +16,7 @@ https://mp.weixin.qq.com/s/KOrJqJgOHLXjDnNPWe4_Mg
 链接：https://pan.baidu.com/s/1e3rqclcHXYdtWsR5gxtBpQ?pwd=bskp
 提取码：bskp
 
-
+学智 , 数据库死锁自动释放 是怎么实现的?
+公司对rocketmq的扩展,都扩展了什么?
 
 
