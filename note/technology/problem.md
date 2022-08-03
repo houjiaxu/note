@@ -19,5 +19,7 @@ https://mp.weixin.qq.com/s/KOrJqJgOHLXjDnNPWe4_Mg
 学智 , 数据库死锁自动释放 是怎么实现的?
 公司对rocketmq的扩展,都扩展了什么?
 
+https://mp.weixin.qq.com/s/cMpOY6mGj1RnX2fFr22IYQ
+https://mp.weixin.qq.com/s/XjFYsP1IUqNzWqXZdJn-Aw
 
 
