@@ -1,4 +1,7 @@
+[源码解读](https://note.youdao.com/web/#/file/WEB6dc78952eecc39ae3495071ab4f48447/markdown/C4D6664D2FF34823B41A453FE2FB35E0/)
+
 [RocketMQ](https://baijiahao.baidu.com/s?id=1682264626057308329&wfr=spider&for=pc)
+
 [参考](https://blog.csdn.net/crazy123456789/article/details/118165367)
 
 RocketMQ支持事务消息、顺序消息、批量消息、定时消息、消息回溯等
@@ -265,8 +268,71 @@ rocketMQ也提供了消息路由的功能，我们可以自定义消息分发策
         }
     },"key_"+i);
 
+SpringCloudStream整合RocketMQ
 
+    @EnableBinding({Source.class, Sink.class})
 
+##mq的共性问题
+
+一、使用RocketMQ如何保证消息不丢失？ 
+
+1、哪些环节会有丢消息的可能？ 
+
+    生产者向broker发送消息(一般是ack)
+    broker宕机(集群)
+    消费者消费消息(一般是ack)
+    整个mq挂了(一般是自定义降级方案).
+
+2、RocketMQ消息零丢失方案 
+
+    1》生产者使用事务消息机制保证消息零丢失 
+    2》RocketMQ配置同步刷盘+主从架构保证MQ自身不会丢消息 
+    3》消费者端不要使用异步消费机制,同步消费之后给个ack.
+    4》整个MQ挂了怎么办? 比如RocketMQ中的NameServer全都挂了如何保证消息不丢失？ 当NameServer全部挂了后，生产者和消费者是立即就无法工作了的。
+        只能自己设计一个降级方案来处理这个问题了。例如在订单系统中，如果多次尝试发送RocketMQ不成功，那就只能另外找给地方(Redis、文件或者内存等)把订单消
+        息缓存下来，然后起一个线程定时的扫描这些失败的订单消息，尝试往RocketMQ发送。等RocketMQ的服务恢复过来后，就能第一时间把这些消息重新发送出去。
+        整个这套降级的机制，在大型互联网项目中，都是必须要有的。
+
+二、使用RocketMQ如何保证消息顺序
+
+    局部有序：只保证一部分关键消息的消费顺序。通常是将一组有序的消息都存入同一个消息队列里,然后由同一个消费者进行消费.
+    全局有序：整个MQ系统的所有消息严格按照队列先入先出顺序进行消费。通常意义下，全局有序都可以压缩成局部有序的问题。
+三、使用RocketMQ如何快速处理积压消息？ 
+1、如何确定RocketMQ有大量的消息积压？
+
+    对于消息积压，如果是RocketMQ或者kafka还好，他们的消息积压不会对性能造成很大的影响。而如果是RabbitMQ的话，那就惨了，大量的消息积压可以瞬间造成性能直线下滑。
+    对于RocketMQ来说，有个最简单的方式来确定消息是否有积压。那就是使用web控制台，就能直接看到消息的积压情况。
+    自定义监控:前公司是对消息积压进行了监控, 超过n多消息积压的话,会进行钉钉告警
+2、如何处理大量积压的消息？ 
+
+    1.增加Consumer节点数量，等积压消息消费完了，再恢复成正常情况。最极限的情况是把Consumer的节点个数设置成跟MessageQueue的个数相同。但是如果此时再继续增加Consumer的服务节点就没有用了(负载均衡)。
+    2.当Consumer个数和MessageQueue个数相同时怎么办? 创建新的topic先增加MessageQueue个数,再增加Consumer个数.
+
+    特殊情况: 在官网中，还分析了一个特殊的情况。就是如果RocketMQ原本是采用的普通方式搭建主从架构，而现在想要中途改为使用Dledger高可用集群，这时候如果不想历史消息丢失，就需要先将消
+    息进行对齐，也就是要消费者把所有的消息都消费完，再来切换主从架构。因为Dledger集群会接管RocketMQ原有的CommitLog日志，所以切换主从架构时，如果有消息没有消费完，这些消息是存在旧
+    的CommitLog中的，就无法再进行消费了。这个场景下也是需要尽快的处理掉积压的消息。
+
+四、RocketMQ的消息轨迹 
+
+1、RocketMQ消息轨迹数据的关键属性
+
+|Producer端 |Consumer端 |Broker端|
+|  :----  | :----  | :----  |
+|生产实例信息 |消费实例信息 |消息的Topic|
+|发送消息时间 |投递时间,投递轮次 |消息存储位置|
+|消息是否发送成功 |消息是否消费成功 |消息的Key值|
+|发送耗时| 消费耗时| 消息的Tag值|
+
+2、消息轨迹配置,打开消息轨迹功能，需要在broker.conf中打开一个关键配置：traceTopicEnable=true
+
+3、消息轨迹数据存储
+
+    默认情况下，消息轨迹数据是存于一个系统级别的Topic ,RMQ_SYS_TRACE_TOPIC。这个Topic在Broker节点启动时，会自动创建出来。
+    另外，也支持客户端自定义轨迹数据存储的Topic。在客户端的两个核心对象 DefaultMQProducer和DefaultMQPushConsumer，他们的构造函数中，都
+        有两个可选的参数来打开消息轨迹存储
+        enableMsgTrace：是否打开消息轨迹。默认是false。
+        customizedTraceTopic：配置将消息轨迹数据存储到用户指定的Topic 。
+![](img/img_10.png)
 
 
 
