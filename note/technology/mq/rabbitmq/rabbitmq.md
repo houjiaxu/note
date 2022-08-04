@@ -109,16 +109,25 @@ RabbitMQ 本身不支持延迟队列，总的来说有三种实现方案：
             container.setPrefetchCount(2);
         Spring Boot 配置方式：
             spring.rabbitmq.listener.simple.prefetch=2
+##六种工作对列模式
+
+    简单模式: 一个生产者、一个消费者，不需要设置交换机（使用默认的交换机）。
+    工作队列模式 Work Queue:一个生产者、多个消费者（竞争关系），不需要设置交换机（使用默认的交换机）。
+    发布订阅模式 Publish/subscribe: 需要设置类型为 fanout 的交换机，并且交换机和队列进行绑定，当发送消息到交换机后，交换机会将消息发送到绑定的队列。
+    路由模式 Routing: 需要设置类型为 direct 的交换机，交换机和队列进行绑定，并且指定 routing key，当发送消息到交换机后，交换机会根据 routing key 将消息发送到对应的队列。
+    通配符模式 Topic:需要设置类型为 topic 的交换机，交换机和队列进行绑定，并且指定通配符方式的 routing key，当发送消息到交换机后，交换机会根据 routing key 将消息发送到对应的队列。
+    rpc调用模式,不算mq
+
+
 
 ##Spring集成AMQP
 
 Spring集成AMQP时，它做了什么？
 
-    1、管理对象（队列、交换机、绑定） 
-    2、封装方法（发送消息、接收消息）
+    1、管理对象（队列、交换机、绑定） ,使用 Spring 整合 RabbitMQ 将组件全部使用配置方式实现，简化编码
+    2、封装方法（发送消息、接收消息）,Spring 提供 RabbitTemplate 简化发送消息 API, 使用监听机制@RabbitListener简化消费者编码
     Spring AMQP 是对 Spring 基于 AMQP 的消息收发解决方案，它是一个抽象层， 不依赖于特定的 AMQP Broker 实现和客户端的抽象，所以可以很方便地替换。
         比如我 们可以使用 spring-rabbit 来实现。 直接maven依赖spring-rabbit即可,此依赖里面包含了3个jar,Amqp-client-3.3.4.jar, Spring-amqp.jar, Spring.rabbit.jar
-
 
 SpringAMQP核心组件
 

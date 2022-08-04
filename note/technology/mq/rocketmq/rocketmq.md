@@ -1,5 +1,6 @@
 [RocketMQ](https://baijiahao.baidu.com/s?id=1682264626057308329&wfr=spider&for=pc)
 [参考](https://blog.csdn.net/crazy123456789/article/details/118165367)
+
 RocketMQ支持事务消息、顺序消息、批量消息、定时消息、消息回溯等
 
 特点:
@@ -117,6 +118,16 @@ Producer 启动流程
     顺序消费（Orderly）:如果正在处理全局顺序是强制性的场景，需要确保使用的主题只有一个消息队列。这个顺序，不是全局顺序，只是分区（queue）顺序。
         要全局顺序只能一个分区，但是同一条queue里面，RocketMQ的确是能保证FIFO的。
     并行消费（Concurrently）:消费的最大并行数量受每个消费者客户端指定的线程池限制。
+    RocketMQ中提供了MessageListenerOrderly 一个类来实现顺序消费，
+        consumer.subscribe("store_topic_test","*");
+        consumer.registerMessageListener((MessageListenerOrderly)(list,consumeOrderlyContext)->{
+            list.stream().forEach(messageExt->System.out.println(new
+            String(messageExt.getBody())));
+            returnConsumeOrderlyStatus.SUCCESS;
+        });
+    问题:
+        1. 遇到消息失败的消息，无法跳过，当前队列消费暂停
+        2. 降低了消息处理的性能
 
 高效的IO存储机制:
 
@@ -242,9 +253,17 @@ RocketMQ事务消息使用限制
         建议使用同步的双重写入机制。
     6.事务消息的生产者 ID 不能与其他类型消息的生产者 ID 共享。与其他类型的消息不同，事务消息允许反向查询、MQ服务器能通过它们的生产者 ID 查询到消费者。
 
+rocketMQ也提供了消息路由的功能，我们可以自定义消息分发策略，可以实现 MessageQueueSelector，来实现自己的消息分发策略
 
-
-
+    SendResultsendResult=producer.send(msg,newMessageQueueSelector(){
+        @Override
+        publicMessageQueueselect(List<MessageQueue>list,Messagemessage,Object o){
+            intkey=o.hashCode();
+            intsize=list.size();
+            intindex=key%size;
+            returnlist.get(index);//list.get(0);
+        }
+    },"key_"+i);
 
 
 
