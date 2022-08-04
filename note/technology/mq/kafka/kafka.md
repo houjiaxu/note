@@ -89,7 +89,7 @@ Kafka名词解释
     运营指标：Kafka也经常用来记录运营监控数据。包括收集各种分布式应用的数据，生产各种操作的集中反馈，比如报警和报告。
     流式处理：比如spark streaming和storm
     事件源
-
+![](img/img_6.png)
 Kafka一些重要设计思想
 
     Consumergroup：各个consumer可以组成一个组，每个消息只能被组中的一个consumer消费，如果一个消息可以被多个consumer消费的话，那么这些consumer必须在不同的组。
@@ -171,3 +171,15 @@ Kafka一些重要设计思想
             this.topic = topic;
             this.isAysnc = isAysnc;
         }
+zookeeper节点数据图
+![](img/img_7.png)
+
+kafka高性能的原因?
+
+    磁盘顺序读写：kafka消息不能修改以及不会从文件中间删除保证了磁盘顺序读，kafka的消息写入文件都是追加在文件末尾，不会写入文件中的某个位置(随机写)保证了磁盘顺序写。 
+    数据传输的零拷贝 
+    读写数据的批量batch处理以及压缩传输
+
+数据传输零拷贝原理：
+![](img/img_9.png)
+
