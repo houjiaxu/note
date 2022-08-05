@@ -335,4 +335,26 @@ SpringCloudStream整合RocketMQ
 ![](img/img_10.png)
 
 
+实践改造点:
+    
+    消费者:集群模式
+        消息消费的最大重试次数，默认16
+        消费线程数量, 不设置时线程池最小大小为20，最大为64。如果你设置了，则最小值是你设的值，最大值是max(你设置的值, 64),一般默认即可
 
+    @EventListener(EurekaInstanceChangedEvent.class)
+    //监听eureka实例变更事件，检测当前实例状态变化，如果当前实例被禁用或权重为0，则停止本实例消费rocketmq消息；否则重新开始本实例的rocketmq消费.
+
+    DefaultMQProducer,DefaultMQPushConsumer都可以被继承,然后自定义;
+        CustomDefaultMQProducer extends DefaultMQProducer//可以在里面增加cat监控啥什么的.也可以在方法里自定义代码,实现自己想要的功能
+    
+    消费/生产都增加了cat监控.
+    使用hession2作为序列化协议.
+扩展点: SpecifiedBeanPostProcessor,可以对MessageListener bean进行修改.
+
+    自定义实现 bean 后置处理器，往 eureka 的[元数据]中添加唯一标识，访问时在 Cookie 加入特定标识
+    自定义MessageListenerMethodInterceptor implements MethodInterceptor,对消费消息的方法进行拦截,查看MessageExt里的自定义的属性,
+        然后从eureka里查找具有想通场景值的服务器,交给该服务器进行处理,如果没有找到,则当前服务器进行处理.
+        MessageExt里自定义的属性从哪儿来的呢? 前端请求发送到controller,取其cookie中的特定标识放到上下文当中, 然后在发送消息时进行切面拦截,
+            判断上下文中若有特定标识,则调用Message#putUserProperty塞一个自定义属性即可.
+
+    多场景:要注意在使用rpc的时候要把cookie的值传到被调用方(可以塞到请求header里),否则拿不到值,就不会走多场景了.
