@@ -4,6 +4,8 @@ https://blog.csdn.net/qq_45076180/article/details/117112434
 [GateWay路由及统一过滤器处理](https://blog.csdn.net/weixin_62661659/article/details/124403015)
 [源码解析,里面还有限流过滤器的整合](https://www.iocoder.cn/categories/Spring-Cloud-Gateway/)
 
+[Springcloud Gateway](https://mp.weixin.qq.com/s/XjFYsP1IUqNzWqXZdJn-Aw)
+
 网关在微服务中的位置
 ![](img/img_4.png)
 
