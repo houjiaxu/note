@@ -405,3 +405,11 @@ Hystrix降级处理
 ![](img/img_6.png)
 
 [请求合并源码](https://www.iocoder.cn/Hystrix/command-collapser-execute/)
+
+可扩展类说明
+    HystrixCommandExecutionHook:提供了对HystrixCommand及HystrixObservableCommand生命周期的钩子方法，可以自定义实现，做一些额外的处理，比如日志打印、覆盖response、更改线程状态等等。
+
+    如果execute出错了并且没有实现自定义降级逻辑，会进入onFallbackError回调（因为默认的实现会抛出UnsupportedOperationException），而不会进入onFallbackSuccess，
+        如果实现了自定义降级逻辑，并且降级代码没有出错，则会进入onFallbackSuccess回调，所以如果要强制打印降级触发的异常日志,则在onFallbackSuccess打印非常合适
+        
+[HystrixCommandExecutionHook说明](https://github.com/Netflix/Hystrix/wiki/Plugins#commandexecutionhook)
