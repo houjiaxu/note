@@ -4,6 +4,8 @@
 
 [参考](https://blog.csdn.net/crazy123456789/article/details/118165367)
 
+推模式和拉模式的好处和缺点?
+
 RocketMQ支持事务消息、顺序消息、批量消息、定时消息、消息回溯等
 
 特点:
