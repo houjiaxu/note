@@ -6,6 +6,7 @@ http超文本传输协议
 
 TCP/IP协议族是互联网相关联的协议集合的总称
 ##协议分层
+
 ![Alt](img/261650351705_.pic.jpg)
 
 分层之后的好处: 如果某2层之间的协议有变动,只需要将这2层之间的协议更换掉就可以了,不必变动其他层的协议.
@@ -161,6 +162,7 @@ HTTPS = HTTP+ 加密 + 认证 + 完整性保护
 使用签名保证报文不被篡改
 
 HTTPS 并非是应用层的一种新协议。只是 HTTP 通信接口部分用 SSL（Secure Socket Layer）和 TLS（Transport Layer Security）协议代 替而已。
+
 ![Alt](img/151650252813_.pic.jpg)
 
 SSL速度慢
