@@ -1,6 +1,7 @@
 
 
-对于Hystrix的扩展:强制打印降级前触发的异常日志(降级方法成功执行的情况下).
+对于Hystrix的扩展:强制打印降级前触发的异常日志(降级方法成功执行的情况下即重写了onfallbacksuccess方法).
+
 HystrixCommandExecutionHook:提供了对HystrixCommand及HystrixObservableCommand生命周期的钩子方法，可以自定义实现，做一些额外的处理，比如日志打印、覆盖response、更改线程状态等等。
 
 对Eureka的扩展:目前某个服务[注册/取消注册]到eurekaServer时，依赖方需要等30秒至1分钟才能知晓,让eureka客户端使用sse技术连接到eurekaServer上，当eurekaServer检测到服务器注册、取消注册等事件时，通过sse主动通知客户端，随后客户端刷新服务器列表。
