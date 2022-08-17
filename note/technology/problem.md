@@ -19,6 +19,7 @@
     数据库死锁问题的排查
     中意人寿的集步: 行走方式6中,8种不同的障碍道具,跑的过程中3种奖励(能量补给站,权益,金币), 遇到加减路程之后3种奖励以什么样的方式计算. 终评之后,另一个一起做的同事直接说hold不住. 
         我:初步分析,找同事详细过一遍,完善技术方案, 开发. 测试, 我这边是没有bug的,倒是前端出了不少bug.
+    代项目经理的协调: 有些人是有情绪的,不愿做,一方面需要和该同事说明情况, 一方面跟部门主管协调人.
 
 最让你感觉到自豪or最有成就感的是什么?
     
@@ -29,13 +30,13 @@
         更好的代码实现方式:在每一步主要步骤的前后都加上postProcessor,然后当做模板方法,子类可以实现.
     
 
-WebMvcConfigurerAdapter 这个玩意到底在哪里调用的,而且这个好像可以有多个实现类,里面的拦截器是&&的关系
+WebMvcConfigurerAdapter 这个玩意到底在哪里调用的,而且这个好像可以有多个实现类,里面的拦截器是&&的关系,springboot2.0之后推荐直接实现WebMvcConfigurer或者直接继承WebMVCConfigurationSupport.
 
 [mybatis-plus简单使用](https://mp.weixin.qq.com/s/N5htFZ-pEOfAOi9ZZUebZQ)
 
 [JVM老生代增长过快问题排查](https://mp.weixin.qq.com/s/6cJ5JuEgEWmMBzJFBDsSMg)
 
-[重入锁](https://www.jianshu.com/p/1014fdd375cf)
+[深入理解ReentrantLock Condition](https://www.jianshu.com/p/1014fdd375cf)
 
 [springcloud源码剖析](https://mp.weixin.qq.com/mp/appmsgalbum?__biz=MzAwMjI0ODk0NA==&action=getalbum&album_id=2083392961806925826&scene=173&from_msgid=2451964154&from_itemidx=1&count=3&nolastread=1#wechat_redirect)
 
