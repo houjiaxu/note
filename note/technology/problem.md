@@ -1,7 +1,10 @@
+[md使用方式](https://www.cnblogs.com/xihailong/p/13919914.html)
+
 [芋道源码解析网站](https://www.iocoder.cn/)
+
 [大佬blog](https://blog.csdn.net/qq_19414183?type=blog)
 
-[md使用方式](https://www.cnblogs.com/xihailong/p/13919914.html)
+[美团技术团队文章](https://tech.meituan.com/)
 
 [CountDownLatch和CyclicBarrier](https://www.jianshu.com/p/043ac5689002)
 主要是CountDownLatch只调用一次await,而CyclicBarrier调用多次await,CountDownLatch基于abq同步阻塞队列, CyclicBarrier基于ReentrantLock Condition 
@@ -44,7 +47,7 @@ WebMvcConfigurerAdapter 这个玩意到底在哪里调用的,而且这个好像�
 
 负载: 随,轮,少,一
 
-
+[高可用](https://mp.weixin.qq.com/s/MQF0VtuNqWPKMeOVdpwbfA)
 
 
 
