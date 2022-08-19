@@ -9,7 +9,7 @@ kafka是scala语言开发，运行在JVM上，需要对JVM参数合理设置，�
     export KAFKA_HEAP_OPTS="‐Xmx16G ‐Xms16G ‐Xmn10G ‐XX:MetaspaceSize=256M ‐XX:+UseG1GC ‐XX:MaxGCPauseMillis=50 ‐XX:G1He apRegionSize=16M"
 
 这种大内存的情况一般都要用G1垃圾收集器，因为年轻代内存比较大，用G1可以设置GC最大停顿时间，不至于一次minor gc就花费太长 时间，当然，因为像kafka，rocketmq，es这些中间件，
-    写数据到磁盘会用到操作系统的page cache，所以JVM内存不宜分配过大，需 要给操作系统的缓存留出几个G。
+    写数据到磁盘会用到操作系统的page cache，所以JVM内存不宜分配过大，需要给操作系统的缓存留出几个G。
 
 ####线上问题及优化
 消息丢失情况： 

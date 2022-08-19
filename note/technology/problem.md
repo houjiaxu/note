@@ -39,8 +39,6 @@ WebMvcConfigurerAdapter 这个玩意到底在哪里调用的,而且这个好像�
 
 [mybatis-plus简单使用](https://mp.weixin.qq.com/s/N5htFZ-pEOfAOi9ZZUebZQ)
 
-[JVM老生代增长过快问题排查](https://mp.weixin.qq.com/s/6cJ5JuEgEWmMBzJFBDsSMg)
-
 [深入理解ReentrantLock Condition](https://www.jianshu.com/p/1014fdd375cf)
 
 [springcloud源码剖析](https://mp.weixin.qq.com/mp/appmsgalbum?__biz=MzAwMjI0ODk0NA==&action=getalbum&album_id=2083392961806925826&scene=173&from_msgid=2451964154&from_itemidx=1&count=3&nolastread=1#wechat_redirect)

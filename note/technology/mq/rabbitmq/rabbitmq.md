@@ -1,4 +1,5 @@
 工作模型
+
 ![](img/img.png)
     
     Broker
@@ -9,12 +10,15 @@
     Vhost:
 
 交换机模型
+
 ![](img/img_1.png)
 
 直连交换机:完全匹配key
+
 ![](img/img_2.png)
 
 广播交换机:广播给所有的与它绑定的Queue上,不匹配key
+
 ![](img/img_2.png)
 
 主体交换机:根据通配符对Routing key进行匹配
@@ -55,6 +59,7 @@
 死信队列如何使用？见代码DeadQueue.java
 
 消息流转过程:
+
 ![](img/img_3.png)
 
 
@@ -228,6 +233,7 @@ RabbitMQ 天然支持集群，不需要通过引入 ZK 或者数据库来实现�
 
 示例: 用 HAProxy 和 Keepalived 如何实现 RabbitMQ 的高可用 （MySQL、Mycat、Redis 类似）。
     基于 Docker 安装 HAproxy 负载+Keepalived 高可用
+
 ![](img/img_8.png)
 
     1、我们规划了两个内存节点，一个磁盘节点。所有的节点之间通过镜像队列的 方式同步数据。内存节点用来给应用访问，磁盘节点用来持久化数据。 
