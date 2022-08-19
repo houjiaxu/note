@@ -46,6 +46,6 @@ WebMvcConfigurerAdapter 这个玩意到底在哪里调用的,而且这个好像�
 负载: 随,轮,少,一
 
 [高可用](https://mp.weixin.qq.com/s/MQF0VtuNqWPKMeOVdpwbfA)
-
+[高可用haproxy+keepalived](https://blog.csdn.net/m0_50019871/article/details/109751090)
 
 

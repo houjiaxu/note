@@ -186,7 +186,11 @@ kafka高性能的原因?
     数据传输的零拷贝 
     读写数据的批量batch处理以及压缩传输
 
+[kafka延迟队列、重试队列、死信队列](https://www.bilibili.com/read/cv15364225/)
+[重试/死信队列代码示例](https://blog.51cto.com/u_15239532/2858255)
+
 数据传输零拷贝原理：
 
 ![](img/img_9.png)
+
 
