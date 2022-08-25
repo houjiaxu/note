@@ -12,7 +12,9 @@
 以mysql为例，看一下mysql中spi是怎么实现的。
 
 ![Alt](img/1071657510202_pic.jpg)
+
 内容
+
 ![Alt](img/1081657510404_.pic.jpg)
 
 
@@ -25,8 +27,11 @@
     这样springboot在进行自动装配的时候，就会拿这个键，找到你写的实现类来完成自动装配。
     spring在解析配置类的时候,会解析DeffredImportSelector类,里面会去扫描所有jar包下的spring.factories文件
 以mybatis为例
+
 ![Alt](img/1091657511347_.pic.jpg)
+
 内容
+
 ![Alt](img/1101657511358_.pic.jpg)
 
 ###dubbo中的spi机制 -- ExtensionLoader
@@ -68,5 +73,6 @@ dubbo的配置文件约束
     初始化后ExtensionPostProcessor回调:调用ExtensionPostProcessor的postProcessAfterInitialization方法对目标对象进行扩展的作用。
     Lifecycle接口回调:接下来会调用initExtension方法，这个方法的作用就是判断你的实现类有没有实现Lifecycle接口，如果有的话会调用initialize()方法的实现
 实现类对象构造过程:
+
 ![Alt](img/1121657521186_.pic.jpg)
 

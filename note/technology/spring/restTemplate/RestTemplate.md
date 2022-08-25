@@ -1,4 +1,5 @@
 RestTemplate类图
+
 ![RestTemplate类图](img/951656554520_.pic.jpg)
 
 HttpAccessor: RestTemplate和其他HTTP访问网关助手的基类，定义了要操作的ClientHttpRequestFactory等通用属性。 不打算直接使用。有关入口点，请参阅 RestTemplate。

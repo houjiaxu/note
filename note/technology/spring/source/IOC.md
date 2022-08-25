@@ -4,9 +4,8 @@ https://docs.spring.io/spring-framework/docs/current/reference/html/
 
 https://spring.io/projects
 
-#源码笔记
 
-https://www.yuque.com/books/share/5f19528d-d89b-4b69-a7bd-9f436a2dd734/bs9d13
+[语雀源码笔记](https://www.yuque.com/books/share/5f19528d-d89b-4b69-a7bd-9f436a2dd734/bs9d13)
 
 #spring源码
 ##bean的创建过程
@@ -161,6 +160,7 @@ new AnnotationConfigApplicationContext(Config.class)
     如果没有代理/aop,是没有走到三级缓存的
     
 spring是怎么避免读取到不完整的bean的? 锁住一级缓存后面的创建过程.也就是说在一级缓存取不到的话会锁住后面的创建过程, 直到这个bean创建完毕
+
 ------------------------------------------------------------------------------------------------------
 ###createBean();//创建bean
     根据beanName解析出Class,设置到RootBeanDefinition中
