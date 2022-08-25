@@ -21,6 +21,16 @@ Netty 的应用场景:
     2.一些大数据基础设施，比如 Hadoop，在处理海量数据的时候，数据在多个计算节点之中传输，为了提高传输性能，也采用 Netty 构建性能更高的网络 IO 层。
     3.在游戏行业，Netty 被用于构建高性能的游戏交互服务器，Netty 提供了 TCP/UDP、HTTP 协议栈，方便开发者基于 Netty 进行私有协议的开发。
 
+阻塞和同步：阻塞是请求是否等待, 同步是接收到请求后服务端的处理
+
+    阻塞：如果线程调用 read/write 过程，但 read/write 过程没有就绪或没有完成，则调用 read/write 过程的线程会一直等待，这个过程叫做阻塞式读写。
+    非阻塞：如果线程调用 read/write 过程，但 read/write 过程没有就绪或没有完成，调用 read/write 过程的线程并不会一直等待，而是去处理其他工作，
+        等到 read/write 过程就绪或完成后再回来处理，这个过程叫做非阻塞式读写。
+
+    异步：read/write 过程托管给操作系统来完成，完成后操作系统会通知（通过回调或者事件）应用网络 IO 程序（其中的线程）来进行后续的处理。
+    同步：read/write 过程由网络 IO 程序（其中的线程）来完成。
+
+
 Java中的网络IO模型: BIO、NIO、AIO。
 
     BIO：同步的、阻塞式 IO。
@@ -32,6 +42,9 @@ Java中的网络IO模型: BIO、NIO、AIO。
         程中服务器线程不必同步等待 read/write 完成。由于不同的操作系统对 AIO 的支持程度不同，AIO 目前未得到广泛应用。
 
 selector模型:selector是多路复用器,可以轮训读取多个channel的数据,读取到数据之后就可以交给server的线程进行处理,即一个线程可以处理多个请求
+
+多路复用: 数据通信系统或计算机网络系统中，传输媒体的带宽或容量往往会大于传输单一信号的需求，为了有效地利用通信线路,希望一个信道同时传输多路信号，这就是所谓的多路复用技术(Multiplexing)。
+
 ![](img/img_1.png)
 
     1.一个 Selector 对应一个处理线程
@@ -46,14 +59,6 @@ Reactor与Proactor模式: 这2中模式是指的java Nio与Aio的工作模式
     Java NIO工作模式是：主动轮训 IO 事件，IO 事件发生后程序的线程主动处理 IO 工作，这种模式也叫做 Reactor 模式。也叫做 Dispatcher 模式，分派模式.
     Java AIO工作模式是：将 IO 事件的处理托管给操作系统，操作系统完成 IO 工作之后会通知程序的线程去处理后面的工作，这种模式叫 Proactor 模式。
 
-阻塞和同步：阻塞是请求是否等待, 同步是接收到请求后服务端的处理
-
-    阻塞：如果线程调用 read/write 过程，但 read/write 过程没有就绪或没有完成，则调用 read/write 过程的线程会一直等待，这个过程叫做阻塞式读写。
-    非阻塞：如果线程调用 read/write 过程，但 read/write 过程没有就绪或没有完成，调用 read/write 过程的线程并不会一直等待，而是去处理其他工作，
-        等到 read/write 过程就绪或完成后再回来处理，这个过程叫做非阻塞式读写。
-
-    异步：read/write 过程托管给操作系统来完成，完成后操作系统会通知（通过回调或者事件）应用网络 IO 程序（其中的线程）来进行后续的处理。
-    同步：read/write 过程由网络 IO 程序（其中的线程）来完成。
 
 缓冲区（Buffer）:缓冲区（Buffer）本质上是一个可读可写的内存块，可以理解成一个容器对象，Channel 读写文件或者网络都要经由 Buffer。在 Java NIO 中，
     Buffer 是一个顶层抽象类，它的常用子类有（前缀表示该 Buffer 可以存储哪种类型的数据）：ByteBuffer,CharBuffer,ShortBuffer,IntBuffer,
@@ -115,6 +120,7 @@ Netty除了JAVA NIO之外的其他功能:
         应用程序的线程从阻塞状态返回，开始处理这个连接上的业务。多路复用是指把多个信号组合起来在一条物理信道上进行传输.
     2）基于线程池技术复用线程资源，不必为每个连接创建专用的线程，应用程序将连接上的业务处理任务分配给线程池中的线程进行处理，一个线程可以处理多个连接的业务。
 ![](img/img_6.png)
+
 这个图和selector模型的图是啥关系? 一般情况下,selector用来监听客户端请求, 然后交给EventDispatch进行转发,
 在这个图的ServiceHandler前面再添加一个selector模块, 请求事件链接到selector,selector链接到ServiceHandler模块就好理解了.
 
@@ -123,6 +129,7 @@ Netty除了JAVA NIO之外的其他功能:
         2）Handlers（图中的 EventHandler）：处理线程执行处理方法来响应 I/O 事件，处理线程执行的是非阻塞操作。
 
 单 Reactor 单线程模式:指处理线程只有1个
+
 ![](img/img_7.png)
 
     基本工作流程
@@ -135,6 +142,7 @@ Netty除了JAVA NIO之外的其他功能:
         2）存在可靠性问题，若线程意外终止，或者进入死循环，会导致整个系统通信模块不可用，不能接收和处理外部消息，造成节点故障。
         单 Reactor 单线程模式使用场景为：客户端的数量有限，业务处理非常快速，比如 Redis 在业务处理的时间复杂度为 O(1)的情况。
 单 Reactor 多线程模式:指处理线程有多个
+
 ![](img/img_8.png)
 
     基本工作流程:
@@ -147,6 +155,7 @@ Netty除了JAVA NIO之外的其他功能:
     缺点：多线程数据共享和控制比较复杂，一个Reactor 处理所有的事件的监听和响应，在单线程中运行，面对高并发场景还是容易出现性能瓶颈。
 
 主从 Reactor 多线程模式
+
 ![](img/img_9.png)
 ![](img/img_10.png)
 
@@ -173,12 +182,15 @@ Netty除了JAVA NIO之外的其他功能:
 进化过程:
 
 BossGroup 中的线程（可以有多个，图中只画了一个）
+
 ![](img/img_11.png)
 
 添加轮训监听
+
 ![](img/img_12.png)
 
 终极版本
+
 ![](img/img_13.png)
     
     工作流程:
@@ -210,6 +222,7 @@ BossGroup 中的线程（可以有多个，图中只画了一个）
 ![](img/img_14.png)
 
 Netty 中的 ChannelHandler 体系
+
 ![](img/img_15.png)
 
     ChannelInboundHandler 用于处理入站 IO 事件

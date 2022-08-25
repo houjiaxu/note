@@ -97,7 +97,7 @@
                             super.doScan(basePackages);//调用父类扫描器进行扫描(实际是spring里的扫描)
                             processBeanDefinitions(beanDefinitions);
                                 正是在这里mybaits做了一个很牛逼的功能，将spring的bean定义玩到极致(做了偷天换日的操作) 我们知道通过父类扫描出来的mapper是接口类型的
-                                比如我们com.tuling.mapper.UserMapper 他是一个接口 我们有基础的同学可能会知道我们的bean定义最终会被实例化成
+                                比如我们com.heal.mapper.UserMapper 他是一个接口 我们有基础的同学可能会知道我们的bean定义最终会被实例化成
                                 对象，但是我们接口是不能实例化的,所以在processBeanDefinitions 来进行偷天换日
                                 循环beanDefinitions
                                     definition.getConstructorArgumentValues().addGenericArgumentValue(beanClassName);//通过构造器设置beanclass名称,这里要注意一下,接收的时候是个class,spring会根据name自动转换成class类
@@ -119,9 +119,10 @@
         这个是在SqlSessionFactoryBean#getObjectType中做了个简单的转换,所以能够根据类型注入成功
             this.sqlSessionFactory == null ? SqlSessionFactory.class : this.sqlSessionFactory.getClass();
 
+    总结:@MapperScan注解里的Import,有个MapperScannerRegistrar,其实现了ImportBeanDefinitionRegistrar接口,里面注册了一个MapperScannerConfigurer的bean定义,该类实现了bean后置处理器,
+        在后置处理器里扫描所有的mapper接口,然后注册成bean定义, 将bean定义类型设置成MapperFactoryBean类型, 创建bean的时候就调用MapperFactoryBean#getObject方法,通过动态代理创建.
 
 mybatis plus源码也要看, 对比做了哪些扩展,怎么实现的.
-看完这个就是springboot源码
 
 
 
