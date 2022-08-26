@@ -339,7 +339,18 @@ spring是怎么避免读取到不完整的bean的? 锁住一级缓存后面的�
                                 5.5.3 找到1个, 则调用getBean(autowiredBeanName, type)获取实例并返回.
                     registerDependentBeans(beanName, autowiredBeanNames);//注册bean之间的依赖关系放入map, 实际并没有注册bean, bean的注册在上一步的doResolveDependency里已经注册并实例化了
                     field.set(bean, value);//注入属性当中
------------------------------------小知识点-------------------------------------------------------------------
+
+
+###属性注入
+
+[populateBean属性注入源码解析](https://blog.csdn.net/weixin_42997554/article/details/105183116)
+
+1.找不到匹配类型的bean,直接抛异常;
+
+2.找到多个类型相同的bean，获取有没有优先使用的Bean，即查找@Primary和@Priority注解标注的bean，没有的话则根据beanname匹配,匹配不到,则抛异常.
+
+3.只找到一个符合的,则进行赋值.
+
 ##小知识点
     findAutowiredAnnotation: this.autowiredAnnotationTypes
         @Autowired,@Value,@Inject
