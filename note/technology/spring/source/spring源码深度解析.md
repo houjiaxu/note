@@ -35,6 +35,7 @@ DefaultListableBeanFactmy 是整个 bean加载的核心部分，是 Spring 注�
 DefaultListableBeanFactory 同的地方其实是在 XmlBeanFactory 中使用了自定义的 XML 读取器XmlBeanDefinitionReader ，实现了个性化的 BeanDefinitionReader 读取， DefaultListableBeanFactory 继承了 AbstractAutowireCapableBeanFactory 并实现了 ConfigurableListableBeanFactoy以及BeanDefinitionRegistry 接口
 
 ![Alt](img/1ce08b28dfa7cd2b5d5247a0fa91791.png)
+
 SingletonBeanRegistry ：定义对羊例的注册及获取
 
 BeanDefinitionRegistry 定义对 BeanDefinition 的各种增删改操作
@@ -85,9 +86,13 @@ Factory Bean 接口对于 Spring 框架来说占有重要的地位， Spring 自
 当配置文件中＜bean＞的 class 属性配置的实现类是 Factory Bean 时，通过 getBean（）方法返的不是 Factory Bean 本身，而是 FactoryBean#getObject（）方法所返回的对象，相当于FactoryBean#getObject（）代理了getBean()方法,如果想要获取FactoryBean本身,则可以在getBean(beanname)的beanname前面加上&即可
 
 使用示例
+
 ![Alt](img/501651718822_.pic.jpg)
+
 ![Alt](img/511651718846_.pic.jpg)
+
 ![Alt](img/521651718859_.pic.jpg)
+
 使用时就可以通过上下文调用getBean("car")了
 
 ##5.2三级缓存
