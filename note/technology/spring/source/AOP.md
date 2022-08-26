@@ -52,6 +52,7 @@ AspectJAutoProxyRegistrar实现了ImportBeanDefinitionRegistrar,重写了registe
 在AbstractAutoProxyCreator中找到了postProcessBeforeInstantiation方法的实现
 
 
+
 3.真正将切面解析成Advisor
 
 [脑图](https://www.processon.com/view/link/5f1958a35653bb7fd24d0aad)
@@ -99,6 +100,7 @@ AbstractAutoProxyCreator#postProcessBeforeInstantiation
                         JdkDynamicAopProxy: Proxy.newProxyInstance(classLoader, proxiedInterfaces, this);
                         CglibAopProxy: Enhancer.create()
 ---------------------------------------findCandidateAdvisors查找候选的Advisors---------------------------------------------------------------------------------
+
 findCandidateAdvisors中先从缓存中查找, 没有的话就进行解析
 
     看实现方法在AnnotationAwareAspectJAutoProxyCreator#findCandidateAdvisors
@@ -113,7 +115,9 @@ findCandidateAdvisors中先从缓存中查找, 没有的话就进行解析
                                 ReflectiveAspectJAdvisorFactory#aspectJAdvisorFactory.getAdvice  分别有AtAround / AtBefore / AtAfter / AtAfterReturning / AtAfterThrowing
                                 然后进行排序,AtAround / AtBefore / AtAfter / AtAfterReturning / AtAfterThrowing的顺序由先到后
 ---------------------------------------创建动态代理的地方---------------------------------------------------------------------------------
+
 解决循环依赖的时候,先不管,值看正常情况下的.也就是初始化之后的.
+
 初始化之后的后置处理器调用AbstractAutoProxyCreator#postProcessAfterInitialization
     
     earlyProxyReferences.remove//之前循环依赖创建的动态代理 如果是现在的bean 就不再创建，并且移除

@@ -312,6 +312,23 @@ spring是怎么避免读取到不完整的bean的? 锁住一级缓存后面的�
         ApplicationListenerDetector
             判断bean如果是ApplicationListener,会将其注册到全局监听器里
 
+
+
+后置处理器的类型:
+
+    InstantiationAwareBeanPostProcessor 
+        1.#postProcessBeforeInstantiation 在创建bean之前调用,会进行aop切面解析
+        5.#postProcessAfterInstantiation 在属性填充时调用,可以终止赋值.
+        6.#postProcessPropertyValues 在属性填充时调用,注入属性值,@Autowired在此处进行DI
+    SmartInstantiationAwareBeanPostProcessor 
+        2.#determineCandidateConstructors 实例化bean,指定实例化的构造函数
+        4.#getEarlyBeanReference 在实例化后,填充属性之前调用,用于解决循环引用aop
+    MergedBeanDefinitiionPostProcessor 
+        3.#postProcessMergedBeanDefinition 在实例化后,填充属性之前调用, 预解析@Autowired,@value
+    BeanPostProcessor 
+        7.在initialization(初始化)前后调用before和after,前调用@postConstruct,后调用创建动态代理
+    DestructionAwareBeanPostProcessor 没啥用?
+
 -----------------------------------第6次调用BeanPostProcessor中的Autowired-------------------------------------------------------------------
 ##Autowired的处理
     AutowiredAnnotationBeanPostProcessor.postProcessPropertyValues
