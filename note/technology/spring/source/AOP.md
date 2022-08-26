@@ -42,15 +42,20 @@ AspectJAutoProxyRegistrar实现了ImportBeanDefinitionRegistrar,重写了registe
 因为在解决循环引用的可能调用动态代理,所以该类实现了SmartInstantiationAwareBeanPostProcessor,
 
 因为在bean初始化之后可能调用动态代理,所以该类实现了BeanPostProcessor,
+
 ![Alt](img/1652275823044_123.png)
 
 在第1次调用bean的后置处理器的时候进行解析的,所以要看InstantiationAwareBeanPostProcessor#postProcessBeforeInstantiation在解析类中的实现,根据如下类图
+
 ![Alt](img/a29041daedf060ed92623b71842d7b0.png)
+
 在AbstractAutoProxyCreator中找到了postProcessBeforeInstantiation方法的实现
 
 
 3.真正将切面解析成Advisor
+
 [脑图](https://www.processon.com/view/link/5f1958a35653bb7fd24d0aad)
+
 AbstractAutoProxyCreator#postProcessBeforeInstantiation
 
     没有beanName 或者 没有包含在targetSourcedBeans中（一般都不会包含，因为targetSource需要手动设置，一般情况不会设置）
@@ -119,6 +124,7 @@ findCandidateAdvisors中先从缓存中查找, 没有的话就进行解析
         createProxy //创建代理对象, 过程参考上面的"真正将切面解析成Advisor"
 
 方法的调用会走到JdkDynamicAopProxy#invoke接口
+
 [详细参考步骤](https://www.processon.com/view/link/5f4dd513e0b34d1abc735998)
 
     advised.getInterceptorsAndDynamicInterceptionAdvice //把我们的aop的advisor 全部转化为拦截器， 通过责任链模式 依此调用
@@ -143,10 +149,13 @@ spring事务传播机制
 [源码分析参考blog](https://blog.csdn.net/JavaTeachers/article/details/123127031)
 
 [源码分析参考blog](https://www.jianshu.com/p/45780e33b4b1)
+
 使用spring事务首先要配置3个对象: PlatformTransactionManager,DataSource,JdbcTemplate, 然后配置@EnableTransactionManagement开启事务
 
 ###开启事务
+
 ![Alt](img/681653284660_.pic.jpg)
+
 点击@EnableTransactionManagement注解,点击@Import(TransactionManagementConfigurationSelector.class)中的Selector类,这个类实现了ImportSelector接口,在ConfigurationClassPostProcessor类中会进行解析,
 会解析方法selectImports返回的数组, 然后将其中的类注册成bean定义,最后进行解析.
 
