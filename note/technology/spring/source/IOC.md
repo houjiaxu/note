@@ -7,6 +7,8 @@ https://spring.io/projects
 
 [语雀源码笔记](https://www.yuque.com/books/share/5f19528d-d89b-4b69-a7bd-9f436a2dd734/bs9d13)
 
+[脑图](https://www.processon.com/view/link/5f5075c763768959e2d109df#map)
+
 #spring源码
 ##bean的创建过程
 new AnnotationConfigApplicationContext(Config.class)
@@ -156,7 +158,7 @@ new AnnotationConfigApplicationContext(Config.class)
     
     说明:一级缓存存放的是完整的bean,二级缓存存放的是早期对象,三级缓存存放的是ObjectFactory对象
     二级缓存解决的是完整bean和早期bean的分离,如果只有一级缓存,当多个线程时,一个线程刚创建完早期对象,就有另一个线程在缓存中取,那么取到的则是早期对象, 是不完整的bean
-    三级缓存解决的是解耦问题(也有说是aop的),如果只有二级缓存,也是可以解决代理对象的,就是要在二级缓存中取不到对象时,直接调用后置处理器,来创建一个对象,而spring是在bean的后置处理器被调用时才创建的.
+    三级缓存解决的是解耦问题(也有说是aop的),如果只有二级缓存,也是可以解决代理对象的,就是要在二级缓存中取不到对象时,直接调用后置处理器,来创建一个对象,spring是在bean的后置处理器被调用时才创建的.
     如果没有代理/aop,是没有走到三级缓存的
     
 spring是怎么避免读取到不完整的bean的? 锁住一级缓存后面的创建过程.也就是说在一级缓存取不到的话会锁住后面的创建过程, 直到这个bean创建完毕

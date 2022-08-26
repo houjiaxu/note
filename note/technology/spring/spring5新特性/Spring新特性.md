@@ -5,6 +5,9 @@
 加了很多新的日志注解
 
 #日志
+
+[日志基础](https://blog.csdn.net/qq_50652600/article/details/122179666)
+
 jdk1.3之前没有任何日志框架,只能靠System.out
 
 随后出现log4j,并开源了,出现了好多开源版本.
