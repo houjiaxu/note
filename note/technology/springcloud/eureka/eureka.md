@@ -1,13 +1,8 @@
 角色: 客户端,服务端.
+
 ![角色](img/1281657767188_.pic.jpg)
 
 ![架构](img/1291657767207_.pic.jpg)
-
-![流程图](img/1431657871737_.pic.jpg)
-
-![流程图](img/1441657871745_.pic.jpg)
-
-![流程图](img/1451657871758_.pic.jpg)
 
 几种注册中心的区别
 
@@ -29,6 +24,8 @@ Eureka核心功能点
     Eureka Server多节点之间的数据复制同步
 
 Server端源码分析
+
+![server流程图](img/1451657871758_.pic.jpg)
 
     @Configuration
     @Import(EurekaServerInitializerConfiguration.class)
@@ -89,7 +86,7 @@ Server端源码分析
         eurekaServerBootstrap.contextInitialized(EurekaServerInitializerConfiguration.this.servletContext);
             initEurekaServerContext();//初始化EurekaServer上下文
                 EurekaServerContextHolder.initialize(this.serverContext);
-                int registryCount = this.registry.syncUp();// 从相邻的eureka节点复制注册表
+                int registryCount = this.registry.syncUp();// 从相邻的eureka节点复制注册表,即新上线节点的数据同步功能
                     register(instance, instance.getLeaseInfo().getDurationInSecs(), true);//将其他节点的实例注册到本节点
                 this.registry.openForTraffic(this.applicationInfoManager, registryCount);
                     super.postInit();
@@ -108,6 +105,11 @@ Server端源码分析
     
     
 Client端源码分析
+
+![client流程图](img/1431657871737_.pic.jpg)
+
+![流程图](img/1441657871745_.pic.jpg)
+
 
     客户端一般要在应用主类中配置@EnableDiscoveryClient注解,在application.properties中用eureka.client.serviceUrl.defaultZone参数指定服务注册中心地址
     如果是引入spring-cloud-starter-netflix-eureka-client后，Eureka Client会自动启用, 通过spring.factories自动配置引入EurekaClientAutoConfiguration,
@@ -197,7 +199,6 @@ Client端源码分析
     一直到达外部参数设定的上限为止，一旦新任务不再超时，间隔时间又会自动恢复为初始值，另外还有CAS来控制多线程同步，这些是我们看源码需要学习到的设计技巧.
    
 Eureka Server服务端Jersey接口源码分析
-![](img/1371657856726_.pic.jpg)
 
     服务端Jersey接口处理类ApplicationResource其中有一个addInstance方法就是用来接收客户端的注册请求接口
     registry.register(info, "true".equals(isReplication));调用AbstractInstanceRegistry#register
@@ -250,7 +251,8 @@ Eureka Server服务端Jersey接口源码分析
 
 看源码彻底搞懂一些诡异的问题：
 
-    看完多级缓存这块源码我们可以搞清楚一个常见的问题，就是当我们eureka服务实例有注册或下线或有实例发生故障，内存注册表虽然会及时更新数据，但是客户端不一定能及时感知到，可能会过30秒才能感知到，因为客户端拉取注册表实例这里面有一个多级缓存机制
+    看完多级缓存这块源码我们可以搞清楚一个常见的问题，就是当我们eureka服务实例有注册或下线或有实例发生故障，内存注册表虽然会及时更新数据，但是客户端不一定能及时感知到，
+        可能会过30秒才能感知到，因为客户端拉取注册表实例这里面有一个多级缓存机制
     还有服务剔除的不是默认90秒没心跳的实例，剔除的是180秒没心跳的实例(eureka的bug导致)
 
 

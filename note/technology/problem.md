@@ -6,6 +6,8 @@
 
 [美团技术团队文章](https://tech.meituan.com/)
 
+[阿里云开发社区](https://developer.aliyun.com/)
+
 [敖丙](https://github.com/AobingJava/JavaFamily)
 
 [CountDownLatch和CyclicBarrier](https://www.jianshu.com/p/043ac5689002)
@@ -61,7 +63,13 @@ WebMvcConfigurerAdapter 这个玩意到底在哪里调用的,而且这个好像�
 [替代ELK：ClickHouse+Kafka+FlieBeat](https://mp.weixin.qq.com/s/2nMYKby1YOWilPRBHhKrDA)
 
 
+eureka构建项目出现异常: Task with name 'postRelease' not found in root project 'eureka'.
+在文件夹双击根目录的gradlew.bat文件,微信截图能看到原因,然后调整相应的错误即可,不过双击的时候通常.bat文件执行的很快,会一闪而过,
+这时候我们只要按Ctrl + c即可
 
+后面发现其实人家源码好像没问题,只不过我下载源码的方式是直接下载了zip文件,如果直接git clone就没问题了.
+
+1.将build.gradle里的    id 'nebula.netflixoss' version '9.1.0' 版本号往下该即可,我是改成了'5.1.0'
 
 
 

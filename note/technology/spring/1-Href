@@ -1,5 +1,6 @@
 https://www.baidu.com/link?url=V73MtJ9AxwdN9cn0CgLiaiRqT-Eqyr1Y2YuKc8ButEq4PsHSDnw2VaB6zG8Vww2G&wd=&eqid=ba491fb0001061a10000000561a03356
 
+https://github.com/Netflix/Hystrix.git
 git clone https://github.com/spring-cloud/spring-cloud-gcp.git
 git clone https://github.com/spring-cloud/spring-cloud-netflix.git
 git clone https://github.com/spring-cloud/spring-cloud-aws.git
