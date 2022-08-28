@@ -13,6 +13,8 @@
 
 ![](NPC问题.jpg)
 
+长期的职业规划, netty和juc以及spring必须学透，netty和juc是做中间件和高性能组件必须的技能，spring吃透的话就很容易整合进去，方便使用
+
 总结一下框架原理,然后实际应用中的配置值,框架的对比.
 
 数据库分片用的哪个工具? 木有分片
@@ -54,5 +56,19 @@ WebMvcConfigurerAdapter 这个玩意到底在哪里调用的,而且这个好像�
 
 [高可用](https://mp.weixin.qq.com/s/MQF0VtuNqWPKMeOVdpwbfA)
 [高可用haproxy+keepalived](https://blog.csdn.net/m0_50019871/article/details/109751090)
+
+
+[替代ELK：ClickHouse+Kafka+FlieBeat](https://mp.weixin.qq.com/s/2nMYKby1YOWilPRBHhKrDA)
+
+
+
+
+
+
+
+
+
+
+
 
 
