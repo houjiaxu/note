@@ -1,18 +1,25 @@
-https://blog.csdn.net/qq_45076180/article/details/117112434
+[Gateway源码分析](https://blog.csdn.net/qq_45076180/article/details/117112434)
+
+[网关设计思路](https://mp.weixin.qq.com/s/Flaz34JLjFrf5IPQy3dWuQ)
 
 [网关做统一认证jwt鉴权示例](https://blog.csdn.net/weixin_43296313/article/details/121126811)
+
 [GateWay路由及统一过滤器处理](https://blog.csdn.net/weixin_62661659/article/details/124403015)
+
 [源码解析,里面还有限流过滤器的整合](https://www.iocoder.cn/categories/Spring-Cloud-Gateway/)
 
 [Springcloud Gateway](https://mp.weixin.qq.com/s/XjFYsP1IUqNzWqXZdJn-Aw)
 
 网关在微服务中的位置
+
 ![](img/img_4.png)
 
 工作过程
+
 ![](img/img.png)
 
 源码解析: spring.factories 里配置了 GatewayAutoConfiguration 类
+
 ![Alt](img/811658199395_.pic.jpg)
 
     @Configuration(proxyBeanMethods = false)
@@ -33,10 +40,12 @@ https://blog.csdn.net/qq_45076180/article/details/117112434
         GlobalFilter实现类：全局过滤器
     }
 ![](img/img_2.png)
+
 过滤器是网关拦截过滤的核心,在org.springframework.cloud.gateway.filter.factory包下有很多的拦截器.
 
 
 GateWay采用的是webFlux的响应式编程，其整个流程与spring mvc 类似
+
 ![](img/img_1.png)
 
 Gateway的源码执行流程
@@ -145,6 +154,7 @@ Gateway的负载均衡是如何实现的？
 
 
 主要类说明
+
 ![Alt](img/img_3.png)
 
     Route:路由信息，包含 destination uri、predicate 和 filter。
@@ -206,6 +216,7 @@ Spring 提供了两种方式构建Route：外部化配置和编程的方式。
     外部化配置是如何工作的？
         Spring boot 遵循规约大于配置的原则，starter 模块都有对应的以模块名称作前缀，以 "AutoConfiguration" 后缀的自动装配类。同样的还有以模块名前缀，以Properties后缀的配置类作为支持。
         Gateway 模块自动装配类为 GatewayAutoConfiguration，对应的配置类为 GatewayProperties。
+
 [4.7. Predicate 示例由浅入深](https://www.iocoder.cn/Spring-Cloud-Gateway/ouwenxue/intro/)        
         
                 

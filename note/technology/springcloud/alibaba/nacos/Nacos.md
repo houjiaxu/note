@@ -1,9 +1,12 @@
 nacos架构
+
 ![](img/1161657591256_.pic.jpg)
+
 NamingService: 命名服务，是nacos提供用来实现服务注册、服务订阅、服务发现等功能的api，由NacosNamingService唯一实现，通过这个api就可以跟nacos服务端实现通信。
 ConfigService：配置服务，配置中心核心接口
 
 注册中心演变
+
 ![](img/1171657591373_.pic.jpg)
 
 注册中心的一般设计
@@ -17,6 +20,7 @@ ConfigService：配置服务，配置中心核心接口
     集群节点同步: leader raft
 
 实例结构图
+
 ![Alt](img/2be5716828669e3a01b26333002e271.png)
 
     namespace: 命名空间,用来服务隔离
@@ -25,6 +29,7 @@ ConfigService：配置服务，配置中心核心接口
     persistentInstances: 持久化服务
     ephemeralInstances: 临时服务
 服务领域模型
+
 ![Alt](img/1181657597064_.pic.jpg)
 
 Nacos与其他注册中心的区别:作为注册中心对外提供了增删改查节点的http接口,可以跨语言.
@@ -128,6 +133,7 @@ nacos集群服务状态变动同步源码剖析
 
 
 nacos配置中心源码分析
+
 ![Alt](img/Nacos配置中心源码分析.jpg)
 
 springboot加载配置的顺序: 
@@ -174,6 +180,7 @@ nacos整合ribbon实现:ribbon是负载均衡的组件，负载均衡，得有�
     ribbon提供了一个接口ServerList，ribbon会通过这个接口获取服务数据，里面有两个获取服务实例的方法,nacos就是通过实现这个接口来实现整合nacos的。
     在Nacos中NacosServerList<NacosServer>实现了ServerList<Server>接口, 实现其实很简单，就是通过nacos提供的api NamingService来实现获取服务实例，然后转换成ribbon认识的NacosServer。
     然后注入一个ServerList对象就可以了,代码是在NacosRibbonClientConfiguration中
+
 ![NacosRibbonClientConfiguration](img/1191657611037_.pic.jpg)
 
 nacos整合ribbon实现的个人思考
