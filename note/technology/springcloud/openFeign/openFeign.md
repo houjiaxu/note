@@ -112,7 +112,8 @@ Feign客户端接口动态代理生成源码剖析
     
 构建动态代理的过程源码剖析
 
-    总结代理对象生成的过程:每个Feign客户端都有对应的一个spring容器，用来解析配置类，根据配置从容器获取到一个Feign.Builder，然后再从容器中获取每个组件，填充到Feign.Builder中，最后通过Feign.Builder的build方法来构造动态代理，构造的过程其实是属于feign包底下的。
+    总结代理对象生成的过程:每个Feign客户端都有对应的一个spring容器，用来解析配置类，根据配置从容器获取到一个Feign.Builder，然后再从容器中获取每个组件，填充到Feign.Builder中，
+        最后通过Feign.Builder的build方法来构造动态代理，构造的过程其实是属于feign包底下的。
     
     @EnableFeignClinets会扫描出每个加了@FeignClient注解的接口，然后生成对应的BeanDefinition，最后重新生成一个bean class为FeignClientFactoryBean的BeanDefinition，注册到spring容器。
     接下来就会根据BeanDefinition来生成feign客户端的代理对象了。通过FeignClientFactoryBean的getObject方法来获取到代理对象
@@ -139,7 +140,7 @@ Feign客户端接口动态代理生成源码剖析
         2. 从FeignContext中获得Feign构建器Feign.Builder
         3. 从FeignContext中获得Client，判断是否进行负载均衡
         4. 从FeignContext中获得Target，并执行Target的默认方法target(FeignClientFactoryBean, Feign.Builder, FeignContext, Target.HardCodedTarget<T>);
-        5.由于一开始注入的Feign.Builder是HystrixFeign.Builder,则此处是调用HystrixFeign.Builder里的对应方法
+        5. 由于一开始注入的Feign.Builder是HystrixFeign.Builder,则此处是调用HystrixFeign.Builder里的对应方法
 
 Feign动态代理调用实现rpc流程分析
 
@@ -191,12 +192,14 @@ Feign跟ribbon整合的配置类
         public Client feignClient(CachingSpringLoadBalancerFactory cachingFactory, SpringClientFactory clientFactory) {
             return new LoadBalancerFeignClient(new Client.Default(null, null), cachingFactory, clientFactory);
         }
-        Client.Default 就是Feign自己实现的Client，里面封装了真正发送http发送请求的功能，LoadBalancerFeignClient虽然也实现了Client接口，但是这个实现其实是为了整合Ribbon用的，并没有发送http的功能，所以需要有个可以发送http功能的实现
+        Client.Default 就是Feign自己实现的Client，里面封装了真正发送http发送请求的功能，LoadBalancerFeignClient虽然也实现了Client接口，但是这个实现其实是为了整合Ribbon用的，
+            并没有发送http的功能，所以需要有个可以发送http功能的实现
         CachingSpringLoadBalancerFactory：后面会说这个类的作用
         SpringClientFactory：这个跟Feign里面的FeignContext的作用差不多，用来实现配置隔离的。
     HttpClientFeignLoadBalancedConfiguration：基于HttpClient实现http调用的,即引入HttpClient才会生效
     OkHttpFeignLoadBalancedConfiguration：基于OkHttp实现http调用的,即引入OkHttp才会生效
-    HttpClientFeignLoadBalancedConfiguration和OkHttpFeignLoadBalancedConfiguration只不过将Client.Default换成了基于HttpClient和OkHttp的实现，也就是发送http请求使用的工具不一样,其他都和DefaultFeignLoadBalancedConfiguration一样
+    HttpClientFeignLoadBalancedConfiguration和OkHttpFeignLoadBalancedConfiguration只不过将Client.Default换成了基于HttpClient和OkHttp的实现，也就是发送http请求使用的工具不一样,
+        其他都和DefaultFeignLoadBalancedConfiguration一样
     
     FeignRibbonClientAutoConfiguration除了导入配置类还声明了CachingSpringLoadBalancerFactory，只不过一种是带基于spring实现的重试功能的，一种是不带的，
         主要看有没有引入spring重试功能的包，所以上面构建LoadBalancerFeignClient注入的CachingSpringLoadBalancerFactory就是在这声明的。

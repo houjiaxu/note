@@ -7,6 +7,7 @@ Sentinel功能:
     本质要做的就是两件事情:统计数据：统计某个资源的访问数据（QPS、RT等信息）,规则判断：判断限流规则、隔离规则、降级规则、熔断规则是否满足
 
 主要特性：
+
 ![](img/img.png)
 
 Sentinel 分为两个部分：
@@ -17,9 +18,11 @@ Sentinel 分为两个部分：
 ProcessorSlotChain:ProcessorSlotChain这个类基于责任链模式来设计，将不同的功能（限流、降级、系统保护）封装为一个个的Slot，请求进入后逐个执行即可。
 
 ProcessorSlotChain其工作流如图：
+
 ![](img/img_1.png)
 
 SPI机制:Sentinel槽链中各Slot的执行顺序是固定好的。但并不是绝对不能改变的。Sentinel将ProcessorSlot 作为 SPI 接口进行扩展，使得 SlotChain 具备了扩展能力。用户可以自定义Slot并编排Slot 间的顺序。
+
 ![](img/img_2.png)
 
 Slot简介:
@@ -43,7 +46,9 @@ Context简介:
     创建: ContextUtil.enter("contextName", "originName");//创建context，包含两个参数：context名称、 来源名称
 
 Node:Sentinel中的簇点链路是由一个个的Node组成的，Node是一个接口，包括下面的实现：
+
 ![](img/img_3.png)
+
 ![](img/img_5.png)
 
     所有的节点都可以记录对资源的访问统计数据，所以都是StatisticNode的子类。
@@ -136,6 +141,7 @@ Sentinel中被保护的资源,Sentinel中的资源用Entry来表示。
             }
         }
 核心源码解析
+
 ![](img/img_6.png)
 
 调用链路上下文Context的初始化
@@ -201,6 +207,7 @@ Sentinel中被保护的资源,Sentinel中的资源用Entry来表示。
 ![](img/img_9.png)
 
 责任链顺序:责任链是执行Slot的entry方法
+
 ![](img/img_7.png)
 
 FlowSlot:滑动时间窗口算法
@@ -227,9 +234,11 @@ FlowSlot:滑动时间窗口算法
 
 
 数据统计源码解析
+
 ![](img/img_11.png)
 
 使用统计数据源码
+
 ![](img/img_12.png)
 
 
