@@ -1,5 +1,7 @@
 [Ribbon核心组件以及运行原理源码剖析](https://mp.weixin.qq.com/s?__biz=Mzg5MDczNDI0Nw==&mid=2247484202&idx=1&sn=a89f4c393ca2d09b263aab79e4ebfd3d&chksm=cfd950e2f8aed9f4e6f49d93b8120d93382899b7d5eccab06b26c76042abf89a98653410b1d1&scene=21#wechat_redirect)
 
+ribbon是客户端的负载均衡,nginx是服务端的负载均衡
+
 Ribbon的核心组件
     
     1.Server:服务实例数据的封装，里面封装了服务实例的ip和端口之类的，一个服务有很多台机器，那就有很多个Server对象。
@@ -48,9 +50,13 @@ ILoadBalancer是在ribbon中是如何使用的。
 
 
 2.Nacos整合Feign如何实现微服务调用
+
 3.Ribbon调用原理分析
+
 4.@LoadBalanced注解原理分析
+
 5.Ribbon负载均衡策略配置
+
 6.Ribbon自定义负载均衡策略
 
 Feign里面封装了Ribbon,Feign对springmvc进行了支持,也就是可以直接对@RequestMapping里的路径进行调用

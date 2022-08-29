@@ -3,6 +3,7 @@ nacos架构
 ![](img/1161657591256_.pic.jpg)
 
 NamingService: 命名服务，是nacos提供用来实现服务注册、服务订阅、服务发现等功能的api，由NacosNamingService唯一实现，通过这个api就可以跟nacos服务端实现通信。
+
 ConfigService：配置服务，配置中心核心接口
 
 注册中心演变
@@ -23,7 +24,7 @@ ConfigService：配置服务，配置中心核心接口
 
 ![Alt](img/2be5716828669e3a01b26333002e271.png)
 
-    namespace: 命名空间,用来服务隔离
+    namespace: 命名空间,用来服务隔离,比如说商城系统和OA系统, 他俩完全没啥关系, 但是OA系统没必要单独一套nacos, 那么就可以用namespace来隔离,再比如生产环境和开发环境可以用不同的namespace
     group: 同一个namespace下,不同的group之间相互隔离,比如2个服务实例都叫serviceA,一个在groupDev,另一个groupTest,那么在groupDev的服务只能订阅groupDev服务的serviceA.
     cluster: 集群, 不同集群名称是可以互相订阅的,是互通的
     persistentInstances: 持久化服务
@@ -33,7 +34,6 @@ ConfigService：配置服务，配置中心核心接口
 ![Alt](img/1181657597064_.pic.jpg)
 
 Nacos与其他注册中心的区别:作为注册中心对外提供了增删改查节点的http接口,可以跨语言.
-http调用和rpc调用的区别
 
 
 ###nacos是如何进行服务注册的
@@ -59,7 +59,7 @@ NacosServiceRegistry#register的方法是实际调用nameservice#registerInstanc
 
 Nacos是如何实现自动注册的?
     
-    容器启动之后会发布WebServerInitializedEvent事件,从而触发AbstractAutoServiceRegistration#onApplicationEvent接口
+    容器启动之后会发布WebServerInitializedEvent事件,从而触发Spring-Cloud-Common中的AbstractAutoServiceRegistration#onApplicationEvent接口
         bind(event)
             start()
                 register();
@@ -83,7 +83,7 @@ SpringCloud完成注册的时机
 
     在Spring-Cloud-Common包中有一个类org.springframework.cloud.client.serviceregistry.ServiceRegistry ,
     它是Spring Cloud提供的服务注册的标准。集成到Spring Cloud中实现服务注册的组件,都会实现该接口。在Nacos中的实现是NacoServiceRegistry。
-    SpringCloud集成Nacos的实现过程：在spring-clou-commons包的META-INF/spring.factories中包含自动装配的配置信息如下：
+    SpringCloud集成Nacos的实现过程：在spring-cloud-commons包的META-INF/spring.factories中包含自动装配的配置信息如下：
         org.springframework.boot.autoconfigure.EnableAutoConfiguration=org.springframework.cloud.client.serviceregistry.AutoServiceRegistrationAutoConfiguration
         而AutoServiceRegistrationAutoConfiguration就是服务注册相关的配置类,里面注入了一个AutoServiceRegistration实例,AbstractAutoServiceRegistration抽象类实现了该接口,
         并且NacosAutoServiceRegistration继承了AbstractAutoServiceRegistration。AbstractAutoServiceRegistration又实现了EventListener,监听WebServerInitializedEvent事件(当Webserver初始化完成之后)
@@ -146,6 +146,7 @@ springboot加载配置的顺序:
         ${spring.application.name}
         extensionConfigs
         sharedConfigs
+
 nacos的配置功能
 
     环境配置:根据不同的环境取不同的配置
@@ -163,6 +164,7 @@ nacos的配置功能
             文件名-profile.文件扩展名
 
 配置中心看:
+
     启动时怎么注册的
     更新操作  有个notifycenter#publishEvent是发布配置变更的
     删除操作
@@ -177,7 +179,7 @@ nacos的配置功能
 
 nacos整合ribbon实现:ribbon是负载均衡的组件，负载均衡，得有服务列表，而nocos刚好提供的有查询服务列表的api,通过nacos提供的api，就可以从nacos服务端拉取服务注册表，那么nacos是如何整合ribbon的呢？
 
-    ribbon提供了一个接口ServerList，ribbon会通过这个接口获取服务数据，里面有两个获取服务实例的方法,nacos就是通过实现这个接口来实现整合nacos的。
+    ribbon提供了一个接口ServerList，ribbon会通过这个接口获取服务数据，里面有两个获取服务实例的方法,nacos就是通过实现这个接口来实现整合ribbon的。
     在Nacos中NacosServerList<NacosServer>实现了ServerList<Server>接口, 实现其实很简单，就是通过nacos提供的api NamingService来实现获取服务实例，然后转换成ribbon认识的NacosServer。
     然后注入一个ServerList对象就可以了,代码是在NacosRibbonClientConfiguration中
 

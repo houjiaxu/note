@@ -1,3 +1,24 @@
+##Feign的作用
+
+[为什么要使用Feign?](https://blog.csdn.net/qq_45730819/article/details/107815919)
+
+    1.Feign 是 Netflix 公司开发的一个声明式的 REST 调用客户端,相同功能的还有以下框架.
+        Httpclient（apache）
+        Httpurlconnection （jdk）
+        restTemplate（spring）
+        OkHttp（android）
+        Feign （Netflix） --> 实现非常优雅
+    2.Feign旨在简化微服务消费方（调用者，客户端）代码的开发，意思就是如果不用feign,那么调用服务时,可能就要直接调用RestTemplate+负载均衡,而用了feign之后
+        可以像直接调用本地方法一样调用服务,以前在使用Ribbon+RestTemplate进行服务调用时，利用RestTemplate对http请求的封装处理，
+        形成了一套模版化的调用方式，但是在实际开发中，由于服务提供者提供的接口非常多，一个接口也可能会被多处调用，Feign在Ribbon+RestTemplate的基础上
+        做了进一步封装，在Feign封装之后，我们只需创建一个接口并使用注解的方式来配置，即可完成对服务提供方的接口绑定，简化了使用Ribbon + RestTemplate
+        的调用，自动封装服务调用客户端，减少代码开发量；
+    3.Spring Cloud Feign 对 Ribbon负载均衡进行了简化，在其基础上进行了进一步的封装，在配置上大大简化了开发工作，它是一种声明式的调用方式，它的使用方法
+        是定义一个接口，然后在接口上添加注解，使其支持了Spring MVC标准注解和HttpMessageConverters，Feign可以与Eureka和Ribbon组合使用以支持负载均衡。
+
+
+##源码解析
+
 [Feign核心源码解析](https://developer.aliyun.com/article/856311?spm=a2c6h.12873639.article-detail.41.40141410Yfdigw)
 
 [OpenFeign之FeignClient动态代理生成原理](https://mp.weixin.qq.com/s?__biz=Mzg5MDczNDI0Nw==&mid=2247484185&idx=1&sn=efb3a1f459be9970126269234ff813e7&chksm=cfd950d1f8aed9c7c9ec6bc8b00c376d9777aa6d6aa2b93ccf6a4b4376adbed8c4f3e1e3754b&scene=21#wechat_redirect)
@@ -19,8 +40,7 @@
             registerFeignClient(registry, annotationMetadata, attributes);
                 重新构造了一个BeanDefinition，这个BeanDefinition的指定的class类型是FeignClientFactoryBean
     总结:这个类的主要作用是扫描指定（不指定就默认路径下的）所有加了@FeignClient注解的类，然后每个类都会生成一个BeanDefinition，随后遍历每个BeanDefinition，然后取出每个@FeignClient注解的属性，
-        构造新的BeanDefinition，传入FeignClientFactoryBean的class，随后注入到spring容器中；同时有配置类的也会将配置类构件出一个bean class
-        为FeignClientSpecification的BeanDefinition注入到spring容器中。
+        构造新的BeanDefinition，传入FeignClientFactoryBean的class，随后注入到spring容器中；同时有配置类的也会将配置类构件出一个beanclass为FeignClientSpecification的BeanDefinition注入到spring容器中。
 ![](img/1241657695714_.pic.jpg)            
 
     链路总结: @EnableFeignClients -> FeignClientsRegistrar 扫描 @Feign注解的类 -> FeignClientFactoryBean通过Targeter生产FeignClient -> Targeter通过Feign.Builder构建Feign -> Feign.Builder
@@ -113,6 +133,7 @@ Feign客户端接口动态代理生成源码剖析
                         newInstance方法通过Target拿到接口的类型，然后获取到所有的方法，遍历每个方法，处理之后放入methodToHandler中，然后通过InvocationHandlerFactory的create方法，传入methodToHandler
                             和Target，获取到一个InvocationHandler，之后通过jdk的动态代理，生成一个代理对象，然后返回回去。InvocationHandler默认是ReflectiveFeign.FeignInvocationHandler
 ![](img/1251657704995_.pic.jpg)
+
     总结:获得目标
         1. 获得FeignContext
         2. 从FeignContext中获得Feign构建器Feign.Builder
