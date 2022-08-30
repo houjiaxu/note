@@ -320,6 +320,14 @@ SpringCloudStream整合RocketMQ
 ![](img/img_10.png)
 
 
+RocketMQ为什么快?
+
+    是因为使用了顺序存储、Page Cache和异步刷盘。
+    1、我们在写入commitlog的时候是顺序写入的，这样比随机写入的性能就会提高很多
+    2、写入commitlog的时候并不是直接写入磁盘，而是先写入操作系统的PageCache,最后由操作系统异步将缓存中的数据刷到磁盘
+
+
+
 实践改造点:
     
     消费者:集群模式

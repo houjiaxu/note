@@ -207,7 +207,7 @@ Eureka Server服务端Jersey接口源码分析
 
     服务端Jersey接口处理类ApplicationsResource其中有一个getContainers方法就是用来获取所有注册实例信息的接口
 
-源码精髓：多级缓存设计思想
+源码精髓：多级缓存设计思想,能保证高并发
 
 ![多级缓存](img/1471657877529_.pic.jpg)
 

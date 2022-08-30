@@ -180,11 +180,28 @@ zookeeper节点数据图
 
 ![](img/img_7.png)
 
-kafka高性能的原因?
+kafka高性能的原因,Kafka为什么快?
 
-    磁盘顺序读写：kafka消息不能修改以及不会从文件中间删除保证了磁盘顺序读，kafka的消息写入文件都是追加在文件末尾，不会写入文件中的某个位置(随机写)保证了磁盘顺序写。 
-    数据传输的零拷贝 
-    读写数据的批量batch处理以及压缩传输
+[Kafka为什么快?](https://zhuanlan.zhihu.com/p/171634444)
+
+[Kafka为什么快2?](https://baijiahao.baidu.com/s?id=1710624455165799096&wfr=spider&for=pc)
+
+    1.利用 Partition 实现并行处理
+    2.磁盘顺序写磁盘：kafka消息不能修改以及不会从文件中间删除保证了磁盘顺序读，kafka的消息写入文件都是追加在文件末尾，不会写入文件中的某个位置(随机写)保证了磁盘顺序写。 
+    3.充分利用 Page Cache
+    4.数据传输的零拷贝
+    5.批处理:读写数据的批量batch处理
+    6.压缩传输:Producer 可将数据压缩后发送给 broker，从而减少网络传输代价，目前支持的压缩算法有：Snappy、Gzip、LZ4。数据压缩一般都是和批处理配套使用来作为优化手段的。
+    
+    总结:
+        partition 并行处理
+        顺序写磁盘，充分利用磁盘特性
+        利用了现代操作系统分页存储 Page Cache 来利用内存提高 I/O 效率
+        采用了零拷贝技术
+            Producer 生产的数据持久化到 broker，采用 mmap 文件映射，实现顺序的快速写入
+            Customer 从 broker 读取数据，采用 sendfile，将磁盘文件读到 OS 内核缓冲区后，转到 NIO buffer进行网络发送，减少 CPU 消耗
+
+
 
 [kafka延迟队列、重试队列、死信队列](https://www.bilibili.com/read/cv15364225/)
 [重试/死信队列代码示例](https://blog.51cto.com/u_15239532/2858255)
