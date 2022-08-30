@@ -78,7 +78,7 @@ eureka构建项目出现异常: Task with name 'postRelease' not found in root p
 
 
 
-
+[Spring Boot + @Async ](https://mp.weixin.qq.com/s/3L74TWepgzHty-s4ZAng2g)
 
 
 
