@@ -189,14 +189,14 @@ spring是怎么避免读取到不完整的bean的? 锁住一级缓存后面的�
                 instantiateBean//调用无参数的构造函数进行创建对象
             没被解析过:
                 determineConstructorsFromBeanPostProcessors//通过bean的后置处理器进行选举出合适的构造函数对象
-                    调用SmartInstantiationAwareBeanPostProcessor.determineCandidateConstructors (第2次调用)
+                    调用SmartInstantiationAwareBeanPostProcessor.determineCandidateConstructors (第2次调用,推断使用哪个构造器实例化)
                         ConfigurationClassPostProcessor的内部类RequiredAnnotationBeanPostProcessor
                         AutowiredAnnotationBeanPostProcessor
                         RequiredAnnotationBeanPostProcessor
                 autowireConstructor//通过有参的构造函数进行反射调用
                 instantiateBean//调用无参数的构造函数进行创建对象
         applyMergedBeanDefinitionPostProcessors()//进行后置处理 @AutoWired @Value的注解的预解析
-            调用MergedBeanDefinitionPostProcessor.postProcessMergedBeanDefinition (第3次调用)
+            调用MergedBeanDefinitionPostProcessor.postProcessMergedBeanDefinition (第3次调用,修改bean定义,@Autowire @Value在这里解析)
                 CommonAnnotationBeanPostProcessor(处理JSR规范)   internalCommonAnnotationProcessor
                 AutowiredAnnotationBeanPostProcessor(处理@Autowired注解)    internalAutowiredAnnotationProcessor
                 RequiredAnnotationBeanPostProcessor(处理@Required注解)     internalRequiredAnnotationProcessor
@@ -215,7 +215,8 @@ spring是怎么避免读取到不完整的bean的? 锁住一级缓存后面的�
                 AutowiredAnnotationBeanPostProcessor(处理@Autowired注解)    internalAutowiredAnnotationProcessor
                 RequiredAnnotationBeanPostProcessor(处理@Required注解)     internalRequiredAnnotationProcessor
             判断bean的属性注入模型ByName或ByType,然后进行注入,其实就是注册bean之间的依赖关系到map中,Map<bean,Set<被依赖bean>>, 被依赖Map<被依赖bean,Set<依赖bean>> 
-            InstantiationAwareBeanPostProcessor.postProcessPropertyValues //后置处理，用于在Spring填充属性到之前前，对属性的值进行相应的处理，比如可以修改某些属性的值。这时注入到 bean 中的值就不是配置文件中的内容了，而是经过后置处理器修改后的内容(第6次调用)
+            InstantiationAwareBeanPostProcessor.postProcessPropertyValues //后置处理，用于在Spring填充属性到之前前，对属性的值进行相应的处理，比如可以修改某些属性的值。
+                这时注入到 bean 中的值就不是配置文件中的内容了，而是经过后置处理器修改后的内容(第6次调用), 处理@Autowired @Value @Resource
                 ConfigurationClassPostProcessor的内部类ImportAwareBeanPostProcessor
                 CommonAnnotationBeanPostProcessor(处理JSR规范)   internalCommonAnnotationProcessor
                 AutowiredAnnotationBeanPostProcessor(处理@Autowired注解)    internalAutowiredAnnotationProcessor

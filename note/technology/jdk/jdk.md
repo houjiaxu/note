@@ -16,3 +16,5 @@ Predicate<T>  boolean test(T t); 1个参数,返回boolean
 
 BiPredicate<T, U>  boolean test(T t, U u); 2个参数,返回boolean
 
+HashMap的rehash的结果要么是等于其在旧数组时的索引位置,记为低位区链表lo开头-low;
+要么是在旧数组时的索引位置再加上旧数组长度，记为高位区链表hi开头high.
