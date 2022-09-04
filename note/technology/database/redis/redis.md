@@ -37,6 +37,8 @@ Redis进行持久化的时候会 fork了一个子进程 执行持久化操作
 
 [集群模式](https://www.jb51.net/article/224568.htm)
 
+[Redis 九种数据类型和应用场景！](https://mp.weixin.qq.com/s/PpaMttjOm2hsupw4R61anA)
+
 [redis使用场景](https://mp.weixin.qq.com/s/2YqkwP-R3BAqh1kmhhW_AQ) 缓存,普通数据,分布式锁
 
 [跳表1](https://blog.csdn.net/yjw123456/article/details/105159817/)
