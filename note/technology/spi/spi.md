@@ -4,6 +4,7 @@
 
 ###java的SPI(Service Provider Interface)机制.
 
+    总结: 加载META-INF/services下的文件,文件名为接口名,内容为实现类的全限定类名;
     java其实就是定义了java语言跟数据库交互的接口，但是具体的实现得交给各大数据库厂商来实现，那么java怎么知道你的数据库厂商的实现了？
     这时就需要spi机制了，java好约了定在 Classpath 路径下的 META-INF/services/ 目录里创建一个以服务接口命名的文件，
     然后内容是该数据库厂商的实现的接口的全限定名，这样数据库厂商只要按照这个规则去配置，java就能找到。
@@ -53,7 +54,7 @@ dubbo的spi机制到底是什么？它与java自带的有何区别？为什么�
 
 dubbo的配置文件约束
     
-    dubbo会从四个目录读取文件 META-INF/dubbo/internal/ 、META-INF/dubbo/ 、META-INF/services/、META-INF/dubbo/external/，
+    dubbo会从四个目录读取文件 META-INF/services/、META-INF/dubbo/ 、META-INF/dubbo/internal/ 、META-INF/dubbo/external/，
     文件名为接口的全限定名，内容为键值对，键为短名称（可以理解为spring中的bean名称），值为实现类。
 @SPI 注解的约束
     

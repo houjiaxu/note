@@ -361,7 +361,7 @@ spring是怎么避免读取到不完整的bean的? 锁住一级缓存后面的�
                     field.set(bean, value);//注入属性当中
 
 
-###属性注入
+###ByType属性注入
 
 [populateBean属性注入源码解析](https://blog.csdn.net/weixin_42997554/article/details/105183116)
 
@@ -372,6 +372,7 @@ spring是怎么避免读取到不完整的bean的? 锁住一级缓存后面的�
 3.只找到一个符合的,则进行赋值.
 
 ##小知识点
+    ConfigurationClassPostProcessor解析@ComponentScan，@Configuation,@Bean,@Import
     findAutowiredAnnotation: this.autowiredAnnotationTypes
         @Autowired,@Value,@Inject
     LifecycleElement:表示方法上有注解,然后封装成此类

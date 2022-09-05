@@ -256,6 +256,18 @@ spring事务传播机制
                 commitTransactionAfterReturning //事务存在的话,提交事务
             处理编程式事务
                 此处不做记录
+
+5.spring声明式事务哪些场景会失效?
+
+    方法的访问权限必须是public，其他private等权限，事务失效
+    方法被定义成了final的，这样会导致事务失效。
+    在同一个类中的方法直接内部调用，会导致事务失效。
+    一个方法如果没交给spring管理，就不会生成spring事务。
+    多线程调用，两个方法不在同一个线程中，获取到的数据库连接不一样的。
+    表的存储引擎不支持事务
+    如果自己try...catch误吞了异常，事务失效。
+    错误的传播
+
 注: 有道云上的笔记比这个要详细,写的也更全面.
 
 [解析Advisor](https://www.processon.com/view/link/5f4f4c195653bb0c71e5f9f4)

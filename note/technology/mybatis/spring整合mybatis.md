@@ -124,7 +124,10 @@
 
 mybatis plus源码也要看, 对比做了哪些扩展,怎么实现的.
 
+mybatis在springboot找不到别名包路径问题?
 
+    问题大概表现是：springboot打成jar包后，运行时，mybatis会扫描typeAliasesPackage配置下的类，由于这个类在springboot jar内部的嵌入jar中，导致找不到该类。
+    修复:自定义vfs,更改路径即可;mybatis自动配置，目前用于修复mybatis在spring下的一个问题：https://github.com/mybatis/mybatis-3/issues/325
 
 
 
