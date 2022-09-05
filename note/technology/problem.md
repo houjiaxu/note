@@ -11,7 +11,16 @@
 [敖丙](https://github.com/AobingJava/JavaFamily)
 
 [CountDownLatch和CyclicBarrier](https://www.jianshu.com/p/043ac5689002)
-主要是CountDownLatch只调用一次await,而CyclicBarrier调用多次await,CountDownLatch基于abq同步阻塞队列, CyclicBarrier基于ReentrantLock Condition 
+主要是CountDownLatch只调用一次await,而CyclicBarrier调用多次await,CountDownLatch基于abq同步阻塞队列, CyclicBarrier基于ReentrantLock Condition
+
+[CountDownLatch和CyclicBarrier区别](https://blog.csdn.net/wl_ang/article/details/104922464)
+
+CountDownLatch和CyclicBarrier区别:
+
+    CountDownLatch各线程都准备完毕,然后开始执行某个事情
+    CyclicBarrier让一组线程到达某个屏障，然后被阻塞，一直到最后一个线程到达屏障，然后屏障开放，所有被阻塞的线程继续执行。
+    CountDownLatch的计数器是大于或等于线程数的，而CyclicBarrier是一定等于线程数
+    CyclicBarrier的计数器可以重置
 
 ![](NPC问题.jpg)
 
@@ -24,6 +33,12 @@
 
 为单独微服务开发定制网关，做到某个活动某个接口细粒度限流?
 [SpringBoot细粒度、可扩展的接口限流实现](https://blog.csdn.net/qq_41310634/article/details/119935776)
+
+接口细粒度限流自定义实现:
+
+    使用redis根据url统计,自然秒内有多少请求访问了
+    increase后的值大于等于设置的阈值时,就触发限流,返回特定页面
+    redis里的值每秒过期,或者是使用url+时分秒作为key,过期时间可以设置长一些
 
 你来设计一个mq or 注册中心,你会怎么设计?
 
