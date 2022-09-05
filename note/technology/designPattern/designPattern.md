@@ -31,7 +31,9 @@ J2EE 模式-->对象合起来要干嘛（表现层,文中表示层个人感觉�
 
 
 #设计模式类型事例
-##1.创建型模式
+##1.创建型模式-单原建工
+(单元建功了)
+
 [FACTORY 工厂模式](https://www.runoob.com/design-pattern/factory-pattern.html)
     
     说明: 
@@ -49,7 +51,9 @@ J2EE 模式-->对象合起来要干嘛（表现层,文中表示层个人感觉�
 
     确保唯一：不是靠new的，是靠instance的，而且要instance地全世界就这么一个实例(这可怜的类，也配叫“类”)。 看SingleTon类代码。
 
-##2.结构型模式
+##2.结构型模式-享代组桥外装适
+(享受代组装桥外装饰)
+
 [ADAPTER 适配器模式](https://www.runoob.com/design-pattern/adapter-pattern.html)
 
     原本类: 中国教练  中国球员  外国球员    
@@ -119,7 +123,8 @@ J2EE 模式-->对象合起来要干嘛（表现层,文中表示层个人感觉�
         比如mapper,创建一个代理类之后,在代理类里写什么样的代码,就是mybatis框架里写的东西了
     垂帘听政：犹如清朝康熙年间的四大府臣，很多权利不在皇帝手里，必须通过辅佐大臣去办；
 
-##3.行为模式
+##3.行为模式-任命中观模访解备状迭策
+(任命中关村模仿解除装备状态,迭代策略)
 [CHAIN OF RESPONSIBLEITY 责任链](https://www.runoob.com/design-pattern/chain-of-responsibility-pattern.html) 
 
     说明: 使多个对象都有机会处理请求,从而避免请求的发送者和请求者之间的耦合,将这个对象连成一条链,并连着这条链传递该请求,直到有一个对象处理它为止
