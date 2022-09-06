@@ -1,5 +1,7 @@
 [官方文档](https://github.com/alibaba/Sentinel/wiki/)
 
+[深入理解 Sentinel 中的限流算法](https://zhuanlan.zhihu.com/p/383064126)
+
 Sentinel功能:
 
     流量控制、熔断降级、系统负载保护等多个维度保护服务的稳定性。与其他模块的整合只需要引入相应的依赖并进行简单的配置即可快速地接入 Sentinel。
