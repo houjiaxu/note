@@ -1,3 +1,5 @@
+[Nacos注册中心原理及核心源码分析](https://zhuanlan.zhihu.com/p/432534729)
+
 nacos架构
 
 ![](img/1161657591256_.pic.jpg)
@@ -67,7 +69,8 @@ Nacos是如何实现自动注册的?
                         NacosServiceRegistry.register
                             NacosNamingService#registerInstance发送http请求到服务端进行注册
     
-    总结:容器启动,发布WebServerInitializedEvent事件(当Webserver初始化完成之后), AbstractAutoServiceRegistration监听了该事件,会在onApplicationEvent中调用注册NacosServiceRegistry#register,该接口会调用NacosServiceRegistry#register进行自动注册服务.
+    总结:其实就是服务注册类监听了web容器初始化事件，然后调用的服务注册接口
+        容器启动,发布WebServerInitializedEvent事件(当Webserver初始化完成之后), AbstractAutoServiceRegistration监听了该事件,会在onApplicationEvent中调用注册NacosServiceRegistry#register,该接口会调用NacosServiceRegistry#register进行自动注册服务.
     
     依赖链路: Nacos ->spring cloud Alibaba Nacos -> springcloud -> springboot -> spring
     NacosNamingService#registerInstance 是注册实例的,那么这个方法是如何被调用的呢?
@@ -105,7 +108,14 @@ Nacos核心功能源码架构图
 ![Alt](img/981656926422_.pic.jpg)
 
 
-nacos注册表如何防止多节点读写并发冲突
+nacos注册表如何防止多节点读写并发冲突?
+
+    CopyOnWrite 思想
+    在updateIps方法中传入了一个List<Instance> ips，然后用ips跟之前注册表中的Instances进行比较，分别得出需要添加、更新、和删除的实例，然后做
+    一些相关的操作，比如Instance的一些属性设置、启动心跳、删除心跳等等，最后把处理后的List<Instance> ips，直接替换内存注册表，这样如果同时有读
+    的请求，其实读取是之前的老注册表的信息，这样就很好的控制了并发读写冲突问题，这个思想就是Copy On Write思想，在JDK源码中并发包里也有一些相关的
+    实现，比如：CopyOnWriteArrayList
+    参考:https://blog.csdn.net/louis_zzz/article/details/121061589   源代码在com.alibaba.nacos.naming.core.Cluster#updateIps
 
 nacos高并发支撑异步任务与内存队列剖析
 

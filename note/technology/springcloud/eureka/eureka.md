@@ -14,10 +14,10 @@
 Eureka核心功能点
     
     服务注册(register):存储在一个双层的Map中
-    服务续约(renew)：心跳默认30秒
+    服务续约(renew)：心跳默认30秒，每隔60s会剔除超过90s没有发送心跳的节点
     服务同步(replicate): Eureka Server之间会互相进行服务同步,就是服务端集群
     获取服务(get registry): 消费者启动的时候，发送一个REST请求给Eureka Server，获取服务列表，并且缓存在Eureka Client本地，默认缓存30秒,Eureka Server也会维护一份只读的服务清单缓存，该缓存每隔30秒更新一次。
-    服务调用:Eureka有Region和Zone的概念，一个Region可以包含多个Zone，在进行服务调用时，优先访问处于同一个Zone中的服务提供者。
+    服务调用:Eureka有Region和Zone的概念，一个Region可以包含多个Zone，在进行服务调用时，优先访问处于同一个Zone中的服务提供者。region：可以简单理解为地理上的分区。zone：可以简单理解为 region 内的具体机房。
     服务下线(cancel):当Eureka Client需要关闭或重启时，会提前先发送REST请求告诉Eureka Server自己要下线了，Eureka Server在收到请求后，就会把该服务状态置为下线（DOWN），并把该下线事件传播出去。
     服务剔除(evict)：Eureka Server在启动的时候会创建一个定时任务，每隔一段60秒，从当前服务清单中把超时没有续约的服务剔除,默认90秒。
     自我保护:短时间内，统计续约失败的比例，如果达到一定阈值，则会触发自我保护的机制，在该机制下，Eureka Server不会剔除任何的微服务，等到正常后，再退出自我保护机制。自我保护开关(eureka.server.enableself-preservation: false)
@@ -108,9 +108,6 @@ Client端源码分析
 
 ![client流程图](img/1431657871737_.pic.jpg)
 
-![流程图](img/1441657871745_.pic.jpg)
-
-
     客户端一般要在应用主类中配置@EnableDiscoveryClient注解,在application.properties中用eureka.client.serviceUrl.defaultZone参数指定服务注册中心地址
     如果是引入spring-cloud-starter-netflix-eureka-client后，Eureka Client会自动启用, 通过spring.factories自动配置引入EurekaClientAutoConfiguration,
         然后注入CloudEurekaClient,会调父类DiscoveryClient的构造方法
@@ -188,10 +185,14 @@ Client端源码分析
                 EurekaServiceRegistry#deregister(this.registration);
                     reg.getApplicationInfoManager().setInstanceStatus(InstanceInfo.InstanceStatus.DOWN);//ApplicationInfoManager#setInstanceStatus
                         ApplicationInfoManager.StatusChangeListener#notify(new StatusChangeEvent(prev, next));
-    
-    
-    
-                            
+
+服务列表缓存
+![服务列表缓存](img/1441657871745_.pic.jpg)
+
+    只读缓存、读写缓存，先读取只读缓存，没有就读取读写缓存，没有再从注册列表拿
+    定时任务每30s将读写缓存中的数据更新至只读缓存
+    读写缓存每隔180s会自动过期，有新注册的服务也会失效读写缓存
+
 源码精髓
 
     参考: https://blog.csdn.net/qq_34680763/article/details/123736997
