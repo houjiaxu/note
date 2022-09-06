@@ -70,30 +70,11 @@ Feign里面封装了Ribbon,Feign对springmvc进行了支持,也就是可以直�
 
 源码实现是在LoadBalancerAutoConfiguration类中
 
-@Qualifier,一个是改变名称, 另一个是限定注入
-
-    比如自定义个注解@MyQualifier 
-    @target @retention @Documented @Inherited
-    @Qualifier
-    public @interface MyQualifier{}
-
-    @Bean
-    @MyQualifier
-    public RestTemplate restTemplate(){
-        return new RestTemplate();
-    }
-
-    @AutoWired
-    @MyQualifier  //这里是注入了所有带有@MyQualifier注解的RestTemplate,如果没有带@MyQualifier注解,是不会被注入到这里面的
-    private List<RestTemplate> restTemplates;
-
-
 
 spring扩展点之SmartInitializingSingleton
     
     SmartInitializingSingleton看字面意思是单例bean初始化,里面有个afterSingletonsInstantiated方法需要重写,可以在这里进行一系列的操作,但是这个玩意具体在spring的哪一步调用的还得考究
     todo 看SmartInitializingSingleton这个是在spring的哪一步被调用的
-
 
 扩展点:
     

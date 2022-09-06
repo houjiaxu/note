@@ -49,6 +49,23 @@ spring中事件注册2次?
     可以用切面,直接生成代理就行了. 
     或者在调用某个特殊方法时,在方法里创建调用链路,然后把这个链路放入缓存,下次再来直接从缓存取链路就行了.
 
+@Qualifier,一个是改变名称, 另一个是限定注入
+
+    比如自定义个注解@MyQualifier 
+    @target @retention @Documented @Inherited
+    @Qualifier
+    public @interface MyQualifier{}
+
+    @Bean
+    @MyQualifier
+    public RestTemplate restTemplate(){
+        return new RestTemplate();
+    }
+
+    @AutoWired
+    @MyQualifier  //这里是注入了所有带有@MyQualifier注解的RestTemplate,如果没有带@MyQualifier注解,是不会被注入到这里面的
+    private List<RestTemplate> restTemplates;
+
 
 
 
