@@ -14,7 +14,8 @@
 Eureka核心功能点
     
     服务注册(register):存储在一个双层的Map中
-    服务续约(renew)：心跳默认30秒，每隔60s会剔除超过90s没有发送心跳的节点
+    服务续约(renew)：心跳默认30秒，每隔60s会剔除超过90s没有发送心跳的节点,此处实际是180s才剔除,是因为eureka的bug导致.
+        原因是eureka将节点的最新更新时间设置成了当前"时间+剔除时间90s", 剔除时间 = 最新更新时间 + 剔除时间90s,也就是说多设置了90s,具体可参考 https://www.likecs.com/show-204969125.html
     服务同步(replicate): Eureka Server之间会互相进行服务同步,就是服务端集群
     获取服务(get registry): 消费者启动的时候，发送一个REST请求给Eureka Server，获取服务列表，并且缓存在Eureka Client本地，默认缓存30秒,Eureka Server也会维护一份只读的服务清单缓存，该缓存每隔30秒更新一次。
     服务调用:Eureka有Region和Zone的概念，一个Region可以包含多个Zone，在进行服务调用时，优先访问处于同一个Zone中的服务提供者。region：可以简单理解为地理上的分区。zone：可以简单理解为 region 内的具体机房。
