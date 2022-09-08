@@ -33,6 +33,9 @@ CountDownLatch和CyclicBarrier区别:
 数据库分片用的哪个工具? 木有分片
 公司对rocketmq的扩展,都扩展了什么? 加了多场景
 
+unsafe类的compareAndSwap是原语,原语是指由若干条指令组成的程序段，在执行过程中不可被中断。即保证了原子性。
+
+
 为单独微服务开发定制网关，做到某个活动某个接口细粒度限流?
 [SpringBoot细粒度、可扩展的接口限流实现](https://blog.csdn.net/qq_41310634/article/details/119935776)
 
