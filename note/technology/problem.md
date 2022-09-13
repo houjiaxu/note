@@ -102,11 +102,14 @@ eureka构建项目出现异常: Task with name 'postRelease' not found in root p
 1.将build.gradle里的    id 'nebula.netflixoss' version '9.1.0' 版本号往下该即可,我是改成了'5.1.0'
 
 
-
 [Spring Boot + @Async ](https://mp.weixin.qq.com/s/3L74TWepgzHty-s4ZAng2g)
 
 
+3个数据，插入第4个，插入到索引1，那么原索引1-2的数据要移动，原索引3的要放入第2个。
 
 
+[快速排序算法](https://blog.csdn.net/weixin_43586713/article/details/119820797)
 
+各种心得要进行总结，比如数据表设计，遵循3范式，状态用tinyint表示等等。
 
+https://mp.weixin.qq.com/s/nj9tnz1JI3ZsLeuk8S5DTg
