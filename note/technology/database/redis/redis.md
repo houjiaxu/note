@@ -3,6 +3,7 @@ Redis为什么快?
     1.内存数据库。Redis的键值操作是基于内存的(而非基于磁盘)，内存的访问速度很快。
     2.高效的底层数据结构。Redis底层会用到压缩列表、跳表、哈希表等数据结构。
     3.高性能IO模型。Redis使用基于多路复用的高性能IO模型。
+    4.处理命令是基于单线程多路复用的,即reactor模型.
 
 基于磁盘和基于内存的区别
 
@@ -34,6 +35,13 @@ Redis进行持久化的时候会 fork了一个子进程 执行持久化操作
 [redis延迟双删的策略](https://www.cnblogs.com/tiancai/p/15901210.html)
 
 [分布式锁及问题](https://blog.csdn.net/Me_xuan/article/details/124418176)
+
+[看门狗机制](https://www.cnblogs.com/jelly12345/p/14699492.html)
+看门狗机制:每隔10s看下,如果还持有锁,则延长生存时间;默认情况下，看门狗的续期时间是30s，也可以通过修改Config.lockWatchdogTimeout来另行指定。
+另外Redisson还提供了指定leaseTime参数来指定加锁的时间。超过这个时间后锁便自动解开了，不会延长锁的有效期。 
+我感觉那其实还不如直接加个时间长的锁
+
+
 
 [集群模式](https://www.jb51.net/article/224568.htm)
 哨兵模式主要使用Raft选举算法
