@@ -36,6 +36,7 @@ Redis进行持久化的时候会 fork了一个子进程 执行持久化操作
 [分布式锁及问题](https://blog.csdn.net/Me_xuan/article/details/124418176)
 
 [集群模式](https://www.jb51.net/article/224568.htm)
+哨兵模式主要使用Raft选举算法
 
 [Redis 九种数据类型和应用场景！](https://mp.weixin.qq.com/s/PpaMttjOm2hsupw4R61anA)
 
