@@ -84,7 +84,6 @@ WebMvcConfigurerAdapter 这个玩意到底在哪里调用的,而且这个好像�
 
 [springcloud源码剖析](https://mp.weixin.qq.com/mp/appmsgalbum?__biz=MzAwMjI0ODk0NA==&action=getalbum&album_id=2083392961806925826&scene=173&from_msgid=2451964154&from_itemidx=1&count=3&nolastread=1#wechat_redirect)
 
-负载: 随,轮,少,一
 
 [高可用](https://mp.weixin.qq.com/s/MQF0VtuNqWPKMeOVdpwbfA)
 [高可用haproxy+keepalived](https://blog.csdn.net/m0_50019871/article/details/109751090)
