@@ -11,10 +11,17 @@ BIOS basic input output System 基本输入输出系统,就是我们在开机的
 
 ###操作系统接口
 
+命令就是一段已经被定义好的程序,执行某个命令的时候会调用这段程序.
 
+![](img/img_2.png)
 
+Linux或unix所有的接口符合一个标准:POSIX Portable operating System Interface of Unix(IEEE制定的一个标准族)
 
+###系统调用的实现
 
+为什么在程序里不能直接调用操作系统(内存)内部的东西?  为了安全性 
+
+操作系统将处理器分为内核态和用户态, 内核态可以访问任何数据,用户态不能访问内核数据
 
 
 
