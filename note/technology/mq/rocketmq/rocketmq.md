@@ -59,6 +59,8 @@ Broker:
 
 Producer
 
+    Producer和NameServer通信获取topic路由信息，和NameServer保持长连接以及和该生产者关联的所有broker保持长连接
+
     生产者向brokers发送由业务应用程序系统生成的消息。RocketMQ提供了发送：同步、异步和单向（one-way）的多种方式。
         同步发送:消息发送方发出数据后会在收到接收方发回响应之后才发下一个数据包。一般用于重要通知消息，例如重要通知邮件、营销短信。
         异步发送:异步发送指发送方发出数据后，不等接收方发回响应，接着发送下个数据包，一般用于可能链路耗时较长而对响应时间敏感的业务场景，例如用户视频上传后通知启动转码服务。
@@ -77,6 +79,8 @@ Producer
         Producer每隔30s（由ClientConfig中heartbeatBrokerInterval决定）向所有关联的broker发送心跳，Broker每隔10s中扫描所有存活的连接，如果Broker
             在2分钟内没有收到心跳数据，则关闭与Producer的连接。
 Consumer
+
+    单个消费者和一台nameserver保持长连接，定时查询topic配置信息，根据topic路由和broker保持长连接
 
     消费者组（Consumer Group）一类 Consumer 的集合名称，这类 Consumer 通常消费同一类消息并且消费逻辑一致，所以将这些 Consumer 分组在一起。消费者组与生产者组类似，
         都是将相同角色的分组在一起并命名。
