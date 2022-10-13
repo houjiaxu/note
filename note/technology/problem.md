@@ -24,6 +24,15 @@ CountDownLatch和CyclicBarrier区别:
     CountDownLatch的计数器是大于或等于线程数的，而CyclicBarrier是一定等于线程数
     CyclicBarrier的计数器可以重置
 
+[软件架构设计入门学习](https://blog.csdn.net/qq_40664711/article/details/123044648)
+
+[架构书籍](https://zhuanlan.zhihu.com/p/436294029?utm_medium=social&utm_oi=984892880510365696)
+
+[架构书籍](https://blog.csdn.net/sunyufeng22/article/details/120562588)
+
+[架构书籍](https://blog.csdn.net/hzbooks/article/details/125713741)
+
+
 ![](NPC问题.jpg)
 
 长期的职业规划, netty和juc以及spring必须学透，netty和juc是做中间件和高性能组件必须的技能，spring吃透的话就很容易整合进去，方便使用
