@@ -35,6 +35,8 @@ CountDownLatch和CyclicBarrier区别:
 
 ![](NPC问题.jpg)
 
+install本地 https://www.cnblogs.com/z_lb/p/12673728.html
+
 长期的职业规划, netty和juc以及spring必须学透，netty和juc是做中间件和高性能组件必须的技能，spring吃透的话就很容易整合进去，方便使用
 
 总结一下框架原理,然后实际应用中的配置值,框架的对比.
