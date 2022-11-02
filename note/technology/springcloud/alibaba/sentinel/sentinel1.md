@@ -41,7 +41,8 @@ Slot简介:
         AuthoritySlot:来源访问控制,根据配置的黑白名单和调用来源信息，来做黑白名单控制。对应授权规则。
         FlowSlot:流量控制,用于根据预设的限流规则以及前面 slot 统计的状态，来进行流量控制。对应流控规则。
         DegradeSlot:熔断降级,通过统计信息以及预设的规则，来做熔断降级。对应降级规则。
-        
+
+Sentinel 支持以下几种规则：流量控制规则、熔断降级规则、系统保护规则、来源访问控制规则 和 热点参数规则。
 
 Context简介:
 
@@ -262,6 +263,14 @@ FlowSlot:滑动时间窗口算法
         如果你希望通过 Redis 来持久化规则源，那就需要自己定制 Dashboard。定制不难，实现它内置的持久化接口即可。
 ![](img/img_14.png)
 
+定制自己的持久化规则
+
+    规则配置，都是存在内存中的。即如果应用重启，这个规则就会失效。提供了开放的接口，可以通过实现 DataSource 接口的方式，来自定义规则的存储数据源。建议：
+        整合动态配置系统，如 ZooKeeper、Nacos 等，动态地实时刷新配置规则
+        结合 RDBMS、NoSQL、VCS 等来实现该规则
+        配合 Sentinel Dashboard 使用
+
+
 分布式限流
 
     分布式限流需要另起一个 Ticket Server，由它来分发 Ticket，能够获取到 Ticket 的请求才可以允许执行临界区代码，Ticket 服务器也需要提供规则输入源。
@@ -288,6 +297,17 @@ FlowSlot:滑动时间窗口算法
     sentinel-extension：一个 Sentinel 的扩展模块，主要是实现了规则的动态更新和持久化。另外热点参数限流也在这里实现的，除此之外注解的相关实现也是在这个模块中。
     sentinel-adapter：一个适配器的扩展，通过适配器可以很方便的为其他框架进行 Sentinel 的集成。
     sentinel-cluster：集群限流的扩展，通过引入这个模块可以在集群环境中使用 Sentinel。
+
+目前 Sentinel 提供如下的扩展点：
+
+    初始化过程扩展：提供 InitFunc SPI接口，可以添加自定义的一些初始化逻辑，如动态规则源注册等。
+    Slot/Slot Chain 扩展：用于给 Sentinel 功能链添加自定义的功能并自由编排。
+    指标统计扩展（StatisticSlot Callback）：用于扩展 StatisticSlot 指标统计相关的逻辑。
+    Transport 扩展：提供 CommandHandler、CommandCenter 等接口，用于对心跳发送、监控 API Server 进行扩展。
+    集群流控扩展：可以方便地定制 token client/server 自定义实现，可参考对应文档(https://github.com/alibaba/Sentinel/wiki/%E9%9B%86%E7%BE%A4%E6%B5%81%E6%8E%A7#%E6%89%A9%E5%B1%95%E6%8E%A5%E5%8F%A3%E8%AE%BE%E8%AE%A1)
+    日志扩展：用于自定义 record log Logger，可用于对接 slf4j 等标准日志实现。
+
+![扩展点](img/img_19.png)
 
 扩展点之系统初始化 InitFunc
     
@@ -330,6 +350,39 @@ FlowSlot:滑动时间窗口算法
     ProcessorSlotEntryCallback:包含 onPass 和 onBlocked 两个回调函数，分别对应着请求在 pass 和 blocked 的时候执行。
     ProcessorSlotExitCallback:包含 onExit 回调函数，对应着请求在 exit 的时候执行。
     可以自定义接口实现，并通过StatisticSlotCallbackRegistry的addEntryCallback或addExitCallback方法注册自定义回调。
+    ProcessorSlotEntryCallback: callback when resource entry passed (onPass) or blocked (onBlocked)
+    ProcessorSlotExitCallback: callback when resource entry successfully completed (onExit)
+    可以利用这些回调接口来实现报警等功能，实时的监控信息可以从 ClusterNode 中实时获取。
+
+扩展点之集群流控客户端/服务端
+
+![](img/img_20.png)
+
+通用扩展接口
+
+    以下通用接口位于 sentinel-core 中：
+        TokenService: 集群限流功能接口，server / client 均可复用
+        ClusterTokenClient: 集群限流功能客户端
+        ClusterTokenServer: 集群限流服务端接口
+        EmbeddedClusterTokenServer: 集群限流服务端接口（embedded 模式）
+    以下通用接口位于 sentinel-cluster-common-default:
+        EntityWriter
+        EntityDecoder
+Client 扩展接口
+
+    集群流控 Client 端通信相关扩展接口：
+        ClusterTransportClient：集群限流通信客户端
+        RequestEntityWriter
+        ResponseEntityDecoder
+Server 扩展接口
+
+    集群流控 Server 端通信相关扩展接口：
+        ResponseEntityWriter
+        RequestEntityDecoder
+    集群流控 Server 端请求处理扩展接口：
+        RequestProcessor: 请求处理接口 (request -> response)
+
+
 
 
 
