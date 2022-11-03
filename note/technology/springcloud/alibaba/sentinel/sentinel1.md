@@ -102,7 +102,8 @@ Sentinel中被保护的资源,Sentinel中的资源用Entry来表示。
 源码解析:
     
     其实和hystrix差不多,都是根据注解搞AOP增强,@SentinelResource注解就是一个标记，Sentinel对被标记的方法做环绕增强，完成资源（Entry）的创建。
-    
+    注解方式埋点不支持 private 方法。
+
     spring.factories中引入了SentinelAutoConfiguration类,该类中注入了SentinelResourceAspect类
         //切点:标有@SentinelResource注解的
         @Pointcut("@annotation(com.alibaba.csp.sentinel.annotation.SentinelResource)")
@@ -287,7 +288,7 @@ FlowSlot:滑动时间窗口算法
     当系统的负载较高时，会启动自我保护,保护的方式是逐步限制 QPS，观察到系统负载恢复后，再逐渐放开 QPS，如果系统的负载又下降了，就再逐步降低 QPS。
 
 
-扩展点分析
+#扩展点分析
 
 ![模块结构以及相互关系](img/img_16.png)
 
@@ -309,7 +310,7 @@ FlowSlot:滑动时间窗口算法
 
 ![扩展点](img/img_19.png)
 
-扩展点之系统初始化 InitFunc
+##扩展点之系统初始化 InitFunc
     
     Sentinel提供InitFunc接口供系统初始化，如果我们需要在系统初始化时做一些事情可以实现这个接口。这是一个SPI接口。
     调用的源码在Env 有个静态代码块,里面调用了InitExecutor.doInit();
@@ -321,7 +322,7 @@ FlowSlot:滑动时间窗口算法
                 集群服务端和客户端的初始化
                 热点限流中 StatisticSlot 回调的初始化
 
-扩展点之规则持久化   
+##扩展点之规则持久化   
 
     ReadableDataSource：读数据源负责监听持久化的数据源的变更，在接收到变更事件时将最新的数据更新
     WritableDataSource：写数据源负责将变更后的规则写入到持久化的数据源中
@@ -332,7 +333,7 @@ FlowSlot:滑动时间窗口算法
     只需要实现监听每种持久化的数据源在发生数据变更时的事件，当接收到最新的数据时将它 update 进 FlowRuleManager 中即可。会通过触发 SentinelProperty 的 updateValue 方法把更新后的规则注入进去。
 ![](img/img_17.png)
 
-扩展点之网络通信
+##扩展点之网络通信
 
      sentinel-transport-common 模块中抽象了3个接口作为扩展点：
         CommandCenter：该接口主要用来在 sentinel-core 中启动一个可以对外提供 api 接口的服务端，Sentinel 中默认有两个实现，分别是 http 和 netty。但是官方默认推荐的是使用 http 的实现。
@@ -340,12 +341,12 @@ FlowSlot:滑动时间窗口算法
         HeartbeatSender：该接口主要是为 sentinel-core 用来向 sentinel-dashboard 发送心跳的，默认也有两个实现，分别是 http 和 netty。
 ![](img/img_18.png)
 
-扩展点之Slot链生成器
+##扩展点之Slot链生成器
 
     SPI接口SlotChainBuilder，默认使用DefaultSlotChainBuilder构造器，可以自定义SlotChainBuilder的实现来构造SlotChain
     自定义Slot:SPI接口ProcessorSlot，有默认8个实现,我们可以自定义ProcessorSlot的实现，并设置@SpiOrder合适的值已达到插入自定义Slot的效果
 
-扩展点之StatisticSlot回调
+##扩展点之StatisticSlot回调
 
     ProcessorSlotEntryCallback:包含 onPass 和 onBlocked 两个回调函数，分别对应着请求在 pass 和 blocked 的时候执行。
     ProcessorSlotExitCallback:包含 onExit 回调函数，对应着请求在 exit 的时候执行。
@@ -354,7 +355,7 @@ FlowSlot:滑动时间窗口算法
     ProcessorSlotExitCallback: callback when resource entry successfully completed (onExit)
     可以利用这些回调接口来实现报警等功能，实时的监控信息可以从 ClusterNode 中实时获取。
 
-扩展点之集群流控客户端/服务端
+##扩展点之集群流控客户端/服务端
 
 ![](img/img_20.png)
 
@@ -381,6 +382,84 @@ Server 扩展接口
         RequestEntityDecoder
     集群流控 Server 端请求处理扩展接口：
         RequestProcessor: 请求处理接口 (request -> response)
+
+##动态规则扩展
+
+- Sentinel 的理念是开发者只需要关注资源的定义，当资源定义成功后可以动态增加各种流控降级规则。 
+  
+Sentinel 提供两种方式修改规则：
+
+    通过 API 直接修改 (loadRules): 手动修改规则（硬编码方式）一般仅用于测试和演示，生产上一般通过动态规则源的方式来动态管理规则。
+        FlowRuleManager.loadRules(List<FlowRule> rules); // 修改流控规则
+        DegradeRuleManager.loadRules(List<DegradeRule> rules); // 修改降级规则
+    通过 DataSource 适配不同数据源修改
+
+##DataSource(数据源)扩展
+
+当规则在文件、数据库或者配置中心时可以使用这个扩展.
+
+推荐通过控制台设置规则后将规则推送到统一的规则中心，客户端实现 ReadableDataSource 接口端监听规则中心实时获取变更，流程如下：
+
+![](img/img_21.png)
+
+DataSource 扩展常见的实现方式有:
+
+    拉模式：客户端主动向某个规则管理中心定期轮询拉取规则，这个规则中心可以是 RDBMS、文件，甚至是 VCS 等。这样做的方式是简单，缺点是无法及时获取变更；
+    推模式：规则中心统一推送，客户端通过注册监听器的方式时刻监听变化，比如使用 Nacos、Zookeeper 等配置中心。这种方式有更好的实时性和一致性保证。
+Sentinel 目前支持以下数据源扩展：
+
+    Pull-based: 动态文件数据源、Consul, Eureka
+    Push-based: ZooKeeper, Redis, Nacos, Apollo, etcd
+
+拉模式扩展: 实现拉模式的数据源最简单的方式是继承 AutoRefreshDataSource 抽象类，然后实现 readSource() 方法，在该方法里从指定数据源读取字符串格式的配置数据。比如 基于文件的数据源。
+
+推模式扩展: 实现推模式的数据源最简单的方式是继承 AbstractDataSource 抽象类，在其构造方法中添加监听器，并实现 readSource() 从指定数据源读取字符串格式的配置数据。比如 基于 Nacos 的数据源。
+
+注册数据源: 通常需要调用以下方法将数据源注册至指定的规则管理器中：
+```
+ReadableDataSource<String, List<FlowRule>> flowRuleDataSource = new NacosDataSource<>(remoteAddress, groupId, dataId, parser);
+FlowRuleManager.register2Property(flowRuleDataSource.getProperty());
+```
+若不希望手动注册数据源，可以借助 Sentinel 的 InitFunc SPI 扩展接口。只需要实现自己的 InitFunc 接口，在 init 方法中编写注册数据源的逻辑。比如：
+```
+public class DataSourceInitFunc implements InitFunc {
+
+    @Override
+    public void init() throws Exception {
+        final String remoteAddress = "localhost";
+        final String groupId = "Sentinel:Demo";
+        final String dataId = "com.alibaba.csp.sentinel.demo.flow.rule";
+
+        ReadableDataSource<String, List<FlowRule>> flowRuleDataSource = new NacosDataSource<>(remoteAddress, groupId, dataId,
+            source -> JSON.parseObject(source, new TypeReference<List<FlowRule>>() {}));
+        FlowRuleManager.register2Property(flowRuleDataSource.getProperty());
+    }
+}
+```
+接着将对应的类名添加到位于资源目录（通常是 resource 目录）下的 META-INF/services 目录下的 com.alibaba.csp.sentinel.init.InitFunc 文件中，比如：
+```
+com.test.init.DataSourceInitFunc
+```
+这样，当初次访问任意资源的时候，Sentinel 就可以自动去注册对应的数据源了。主要利用spi机制
+
+[数据源示例参考](https://sentinelguard.io/zh-cn/docs/dynamic-rule-configuration.html)
+
+
+##日志扩展
+
+1.7.2 版本开始，Sentinel 支持 Logger 扩展机制，可以实现自定义的 Logger SPI 来将 record log 等日志自行处理。metric/block log 暂不支持定制。
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
