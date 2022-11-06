@@ -91,7 +91,6 @@ ZuulBlockFallbackManager.registerProvider(new MyBlockFallbackProvider());
 ![](img/img_1.png)
 
 
-看到这里了 https://sentinelguard.io/zh-cn/docs/parameter-flow-control.html
 
 
 

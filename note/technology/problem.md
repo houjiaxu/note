@@ -34,6 +34,7 @@ CountDownLatch和CyclicBarrier区别:
 
 [架构书籍](https://blog.csdn.net/hzbooks/article/details/125713741)
 
+[如何查找jar包冲突](https://blog.csdn.net/qq_40704356/article/details/121403473)
 
 ![](NPC问题.jpg)
 

@@ -1,5 +1,18 @@
 [官方文档](https://github.com/alibaba/Sentinel/wiki/)
 
+[自定义Slot节点](https://www.likecs.com/show-204067793.html)
+
+[熔断告警Slot](http://www.manongjc.com/detail/55-ccbrxumrqyvkuji.html)
+
+
+[基本使用参考](https://blog.csdn.net/qq_50909707/article/details/123863348)
+[基本使用参考2](https://blog.csdn.net/nece001/article/details/107082394/)
+
+    1.dos命令打开 D:\app\sentinel
+    2.执行java -jar sentinel-dashboard-1.8.6.jar
+    3.访问http://localhost:8080/#/dashboard/home   默认账号密码都是sentinel
+
+
 [深入理解 Sentinel 中的限流算法](https://zhuanlan.zhihu.com/p/383064126)
 
 Sentinel功能:
@@ -450,7 +463,8 @@ com.test.init.DataSourceInitFunc
 1.7.2 版本开始，Sentinel 支持 Logger 扩展机制，可以实现自定义的 Logger SPI 来将 record log 等日志自行处理。metric/block log 暂不支持定制。
 
 
-
+>Sentinel Dashboard（基于1.8.1）流控规则持久化到Nacos——涉及部分Sentinel Dashboard源码改造
+http://t.zoukankan.com/jian0110-p-14139044.html
 
 
 
