@@ -449,7 +449,7 @@ com.test.init.DataSourceInitFunc
 
 1.7.2 版本开始，Sentinel 支持 Logger 扩展机制，可以实现自定义的 Logger SPI 来将 record log 等日志自行处理。metric/block log 暂不支持定制。
 
-日志扩展
+
 
 
 
