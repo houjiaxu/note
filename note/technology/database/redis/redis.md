@@ -65,6 +65,21 @@ Sentinel将一个主服务器判断为主观下线之后，为了确认这个主
 
 ![](img/img_3.png)
 
+##问题
+
+[redis的increase返回null](https://mp.weixin.qq.com/s/90Vwd7_03XRRDtIHWFE6Dw)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
